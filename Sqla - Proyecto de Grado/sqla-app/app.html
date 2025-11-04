@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SQL por Bloques - App</title>
+  <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+
+<body>
+  <div class="app-container">
+
+    <!-- Controles arriba -->
+    <div class="controls">
+      <button id="showMermaidBtn">Mostrar/Esconder Diagrama ERD</button>
+      <button id="showOutputBtn">Mostrar/Esconder SQL Output</button>
+      <button id="showBd">Abrir Bases de Datos</button>
+    </div>
+    ss
+    <!-- Main layout: Blockly a la izquierda, ERD a la derecha -->
+    <div class="main-layout">
+      <div id="blocklyDiv" class="blockly-container"></div>
+      <div id="mermaidDiv" class="mermaid-container" style="display:none;"></div>
+    </div>
+
+    <!-- SQL Output debajo -->
+    <div id="sqlOutput" class="sql-output" style="display:none;"></div>
+
+  </div>
+  </div>
+
+  <!-- Toolbox oculto -->
+  <xml id="toolbox" style="display: none">
+    <category name="Logic" colour="%{BKY_LOGIC_HUE}">
+      <block type="controls_if"></block>
+      <block type="logic_compare"></block>
+    </category>
+    <category name="Loops" colour="%{BKY_LOOPS_HUE}">
+      <block type="controls_repeat_ext"></block>
+      <block type="controls_whileUntil"></block>
+    </category>
+    <category name="Math" colour="%{BKY_MATH_HUE}">
+      <block type="math_number"></block>
+      <block type="math_arithmetic"></block>
+    </category>
+  </xml>
+
+  </div>
+
+  <script type="module">
+    import { AppController } from '/src/js/controllers/appController.js';
+
+    document.addEventListener('DOMContentLoaded', () => {
+      AppController.init();
+
+      // Mostrar/ocultar Mermaid
+      document.getElementById('showMermaidBtn').addEventListener('click', () => {
+        const mermaidDiv = document.getElementById('mermaidDiv');
+        mermaidDiv.style.display = mermaidDiv.style.display === 'none' ? 'block' : 'none';
+        AppController.resizeBlockly(); // ✅ recalcular tamaño
+      });
+
+      // Mostrar/ocultar SQL Output
+      document.getElementById('showOutputBtn').addEventListener('click', () => {
+        const sqlDiv = document.getElementById('sqlOutput');
+        sqlDiv.style.display = sqlDiv.style.display === 'none' ? 'block' : 'none';
+        AppController.resizeBlockly(); // ✅ recalcular tamaño
+      });
+    });
+  </script>
+</body>
+
+</html>

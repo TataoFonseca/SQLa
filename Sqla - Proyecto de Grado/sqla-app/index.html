@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SQL por Bloques</title>
+  <link rel="stylesheet" href="../assets/css/index.css">
+</head>
+
+<body>
+  <div class="container">
+    <div class="overlay">
+      <div class="logo">
+        <img src="/logo.png" alt="Logo">
+      </div>
+      <p>Aplicativo para el aprendizaje de SQL mediante programación por bloques</p>
+      <button id="startBtn">Comenzar</button>
+    </div>
+  </div>
+
+  <script type="module">
+    // Redirigir al dar click en "Comenzar"
+    document.getElementById('startBtn').addEventListener('click', () => {
+      window.location.href = '/app.html'; // tu SPA de Blockly
+    });
+  </script>
+</body>
+
+</html>
