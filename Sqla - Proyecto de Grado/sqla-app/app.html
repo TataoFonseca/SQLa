@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,6 +9,10 @@
 </head>
 
 <body>
+  <!-- HEADER -->
+  <div id="header-container"></div>
+
+
   <div class="app-container">
 
     <!-- CONTROLES SUPERIORES -->
@@ -67,13 +72,18 @@
     </category>
   </xml>
 
+  <div id="footer-container"></div>
+
   <!-- SCRIPT PRINCIPAL -->
   <script type="module">
     import { AppController } from '/src/js/controllers/appController.js';
+    import { loadPartials } from '/src/js/utils/loadPartials.js';
 
-    document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', async () => {
+      await loadPartials({ header: true, footer: true });
       AppController.init(); // toda la lógica de eventos está dentro
     });
   </script>
 </body>
+
 </html>

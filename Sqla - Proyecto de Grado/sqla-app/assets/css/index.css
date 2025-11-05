@@ -5,7 +5,6 @@
   box-sizing: border-box;
 }
 
-/* Fondo con gradiente + imagen */
 body {
   font-family: "Poppins", sans-serif;
   height: 100vh;
@@ -16,18 +15,20 @@ body {
   background:
     linear-gradient(rgba(50, 0, 100, 0.3), rgba(100, 0, 150, 0.3)),
     url('/background.png');
-  /* ruta desde public en Vite */
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
+  margin: 0;
+  overflow: hidden;
 }
 
-/* Container central */
+/* ======================
+   CONTENIDO CENTRAL
+   ====================== */
 .container {
   text-align: center;
 }
 
-/* Overlay para legibilidad */
 .overlay {
   padding: 40px 60px;
   background-color: rgba(0, 0, 0, 0.25);
@@ -35,7 +36,7 @@ body {
   display: inline-block;
 }
 
-/* Logo grande */
+/* Logo */
 .logo img {
   width: 550px;
   margin-bottom: 30px;
@@ -47,7 +48,7 @@ p {
   margin-bottom: 30px;
 }
 
-/* Botón */
+/* Botón principal */
 button {
   padding: 16px 32px;
   background-color: #7a5cff;
@@ -62,3 +63,41 @@ button {
 button:hover {
   background-color: #9b7dff;
 }
+
+/* ======================
+   FOOTER
+   ====================== */
+.app-footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 32px; /* más delgado */
+  background: linear-gradient(
+    to right,
+    rgba(80, 40, 120, 0.22),
+    rgba(100, 48, 160, 0.22),
+    rgba(142, 68, 173, 0.22)
+  );
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: #f2f2f2;
+  font-size: 0.72rem; /* 🔹 más pequeña */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  line-height: 1;
+  font-weight: 300; /* más ligera */
+  letter-spacing: 0.2px;
+  box-shadow: 0 -1px 4px rgba(0, 0, 0, 0.2);
+  z-index: 1000;
+  user-select: none;
+}
+
+.app-footer p {
+  margin: 0;
+  padding: 0;
+  opacity: 0.85;
+}
+

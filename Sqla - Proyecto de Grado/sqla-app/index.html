@@ -19,10 +19,17 @@
     </div>
   </div>
 
+  <!-- FOOTER -->
+  <div id="footer-container"></div>
+
   <script type="module">
-    // Redirigir al dar click en el boton "Comenzar"
-    document.getElementById('startBtn').addEventListener('click', () => {
-      window.location.href = '/app.html'; // tu SPA de Blockly
+    import { loadPartials } from '/src/js/utils/loadPartials.js';
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      await loadPartials({ footer: true });
+      document.getElementById('startBtn').addEventListener('click', () => {
+        window.location.href = '/app.html';
+      });
     });
   </script>
 </body>
