@@ -126,3 +126,77 @@ body {
     height: 15vh;
   }
 }
+
+/* Css combobox */
+
+/* === CONTROLES SUPERIORES === */
+.controls {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-bottom: 15px;
+}
+
+.controls button {
+  background-color: #2b2d42;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 16px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s, transform 0.1s;
+}
+
+.controls button:hover {
+  background-color: #3c3f58;
+  transform: scale(1.03);
+}
+
+/* === COMBOBOX GENERAL === */
+.combobox-container {
+  position: relative;
+  display: inline-block;
+}
+
+.combobox-menu {
+  display: none;
+  position: absolute;
+  top: 110%;
+  left: 0;
+  background-color: #fff;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  min-width: 200px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+  z-index: 10;
+}
+
+.combobox-menu.active {
+  display: block;
+}
+
+.combobox-menu ul {
+  list-style: none;
+  margin: 0;
+  padding: 6px 0;
+}
+
+.combobox-menu li {
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #333;
+  transition: background 0.2s;
+}
+
+.combobox-menu li:hover {
+  background-color: #f2f2f2;
+}
+
+/* === SEPARADOR VISUAL ENTRE COMBOS === */
+.combobox-separator {
+  width: 1px;
+  background-color: #ccc;
+  margin: 0 6px;
+}

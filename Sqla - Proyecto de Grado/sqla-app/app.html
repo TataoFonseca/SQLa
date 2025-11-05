@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -11,28 +10,49 @@
 <body>
   <div class="app-container">
 
-    <!-- Controles arriba -->
+    <!-- CONTROLES SUPERIORES -->
     <div class="controls">
       <button id="showMermaidBtn">Mostrar/Esconder Diagrama ERD</button>
       <button id="showOutputBtn">Mostrar/Esconder SQL Output</button>
-      <button id="showOpenBdBtn">Abrir Bases de Datos</button>
-      <button id="showExportBdBtn">Exportar Bases de Datos</button>
+
+      <!-- Combo: Abrir BD -->
+      <div class="combobox-container">
+        <button id="showOpenBdBtn">Abrir Bases de Datos ▼</button>
+        <div class="combobox-menu" id="openBdMenu">
+          <ul>
+            <li>Importar desde archivo</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Combo: Exportar BD -->
+      <div class="combobox-container">
+        <button id="showExportBdBtn">Exportar Bases de Datos ▼</button>
+        <div class="combobox-menu" id="exportBdMenu">
+          <ul>
+            <li>Exportar como .SQL</li>
+            <li>Exportar como .JSON</li>
+          </ul>
+        </div>
+      </div>
     </div>
 
-    <!-- Main layout: Blockly a la izquierda, ERD a la derecha -->
+    <!-- LAYOUT PRINCIPAL -->
     <div class="main-layout">
+      <!-- Blockly -->
       <div id="blocklyDiv" class="blockly-container"></div>
+
+      <!-- Mermaid -->
       <div id="mermaidDiv" class="mermaid-container" style="display:none;"></div>
     </div>
 
-    <!-- SQL Output debajo -->
+    <!-- SQL OUTPUT -->
     <div id="sqlOutput" class="sql-output" style="display:none;"></div>
 
   </div>
-  </div>
 
-  <!-- Toolbox oculto -->
-  <xml id="toolbox" style="display: none">
+  <!-- TOOLBOX oculto -->
+  <xml id="toolbox" style="display:none">
     <category name="Logic" colour="%{BKY_LOGIC_HUE}">
       <block type="controls_if"></block>
       <block type="logic_compare"></block>
@@ -47,29 +67,13 @@
     </category>
   </xml>
 
-  </div>
-
+  <!-- SCRIPT PRINCIPAL -->
   <script type="module">
     import { AppController } from '/src/js/controllers/appController.js';
 
     document.addEventListener('DOMContentLoaded', () => {
-      AppController.init();
-
-      // Mostrar/ocultar Mermaid
-      document.getElementById('showMermaidBtn').addEventListener('click', () => {
-        const mermaidDiv = document.getElementById('mermaidDiv');
-        mermaidDiv.style.display = mermaidDiv.style.display === 'none' ? 'block' : 'none';
-        AppController.resizeBlockly(); // ✅ recalcular tamaño
-      });
-
-      // Mostrar/ocultar SQL Output
-      document.getElementById('showOutputBtn').addEventListener('click', () => {
-        const sqlDiv = document.getElementById('sqlOutput');
-        sqlDiv.style.display = sqlDiv.style.display === 'none' ? 'block' : 'none';
-        AppController.resizeBlockly(); // ✅ recalcular tamaño
-      });
+      AppController.init(); // toda la lógica de eventos está dentro
     });
   </script>
 </body>
-
 </html>
