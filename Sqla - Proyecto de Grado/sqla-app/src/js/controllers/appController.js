@@ -99,7 +99,7 @@ erDiagram
     // Generar HTML contenedor
     mermaidDiv.innerHTML = `
       <h2>Modelo Entidad-Relación — Esquema: 
-        <span style="color:#4CAF50">${schemaName}</span>
+        <span style="color :#00ff99">${schemaName}</span>
       </h2>
       <div id="mermaidDiagram"></div>
     `;
