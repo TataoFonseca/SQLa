@@ -11,6 +11,21 @@ export const AppController = {
   workspace: null,
 
   init: function () {
+
+    // === TEMA PERSONALIZADO PARA BLOCKLY ===
+    const darkGlassTheme = Blockly.Theme.defineTheme('darkGlass', {
+      'base': Blockly.Themes.Classic,
+      'componentStyles': {
+        'workspaceBackgroundColour': 'transparent',
+        'toolboxBackgroundColour': 'rgba(30, 30, 30, 0.7)',
+        'toolboxForegroundColour': '#ffffff',
+        'flyoutBackgroundColour': 'rgba(40, 40, 40, 0.8)',
+        'flyoutForegroundColour': '#ffffff',
+        'scrollbarColour': 'rgba(255, 255, 255, 0.3)',
+        'insertionMarkerColour': '#ffffff'
+      }
+    });
+
     // === Referencias del DOM ===
     const blocklyDiv = document.getElementById('blocklyDiv');
     const showMermaidBtn = document.getElementById('showMermaidBtn');
@@ -22,10 +37,28 @@ export const AppController = {
     const openBdMenu = document.getElementById('openBdMenu');
     const exportBdMenu = document.getElementById('exportBdMenu');
 
+    
+
     // === Inicializar Blockly ===
     this.workspace = Blockly.inject(blocklyDiv, {
       toolbox: document.getElementById('toolbox'),
+      theme: darkGlassTheme, // Aplicar el tema personalizado
+      renderer: 'geras' // Renderizador que funciona mejor con temas oscuros
     });
+
+    // === APLICAR EFECTO CRISTAL AL FONDO INTERNO ===
+    setTimeout(() => {
+      const blocklyBackground = document.querySelector('.blocklyMainBackground');
+      if (blocklyBackground) {
+        blocklyBackground.setAttribute('fill', 'transparent');
+      }
+      
+    // También personalizar la cuadrícula
+      const gridPattern = document.querySelector('.blocklyGridPattern');
+      if (gridPattern) {
+        gridPattern.setAttribute('stroke', 'rgba(255, 255, 255, 0.1)');
+      }
+    }, 100);
 
     Blockly.svgResize(this.workspace);
     window.addEventListener('resize', () => Blockly.svgResize(this.workspace));

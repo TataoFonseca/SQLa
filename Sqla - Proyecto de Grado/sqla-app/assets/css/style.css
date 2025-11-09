@@ -67,11 +67,35 @@ body {
   flex: 2 1 0;
   height: auto;
   margin: 0;
-  border: 1px solid #444;
+  border: 1px solid rgba(255, 255, 255, 0.25);
   box-sizing: border-box;
   border-radius: 12px;
   overflow: hidden;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
+
+/* Fondo del área de trabajo de Blockly */
+.blocklyMainBackground {
+  fill: transparent !important;
+}
+
+/* Personalizar la cuadrícula de Blockly */
+.blocklyGridPattern {
+  stroke: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Scrollbar personalizado para Blockly */
+.blocklyScrollbarHandle {
+  fill: rgba(255, 255, 255, 0.3) !important;
+}
+
+.blocklyScrollbarBackground {
+  fill: rgba(0, 0, 0, 0.2) !important;
+}
+
 
 /* ERD container */
 .mermaid-container {
