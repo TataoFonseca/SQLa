@@ -1,5 +1,11 @@
+// src/js/controllers/appController.js
 import * as Blockly from 'blockly';
+import { javascriptGenerator } from 'blockly/javascript';
 import mermaid from 'mermaid';
+
+// IMPORTA TUS BLOQUES
+import { SELECT_DEFINITION, SELECT_GENERATOR } from '../blocks/dml_SelectBlock.js'; 
+import { FROM_DEFINITION, FROM_GENERATOR } from '../blocks/dml_FromBlock.js';
 
 mermaid.initialize({
   startOnLoad: false,
@@ -9,9 +15,18 @@ mermaid.initialize({
 
 export const AppController = {
   workspace: null,
-
+  
   init: function () {
-
+    // === REGISTRA LOS BLOQUES (JSON) ===
+    Blockly.defineBlocksWithJsonArray([
+      SELECT_DEFINITION, 
+      FROM_DEFINITION 
+    ]);
+    
+    // === REGISTRA LOS GENERADORES ===
+    javascriptGenerator['sql_select'] = SELECT_GENERATOR;
+    javascriptGenerator['sql_from'] = FROM_GENERATOR;
+    
     // === TEMA PERSONALIZADO PARA BLOCKLY ===
     const darkGlassTheme = Blockly.Theme.defineTheme('darkGlass', {
       'base': Blockly.Themes.Classic,
@@ -25,7 +40,7 @@ export const AppController = {
         'insertionMarkerColour': '#ffffff'
       }
     });
-
+    
     // === Referencias del DOM ===
     const blocklyDiv = document.getElementById('blocklyDiv');
     const showMermaidBtn = document.getElementById('showMermaidBtn');
@@ -36,16 +51,14 @@ export const AppController = {
     const sqlDiv = document.getElementById('sqlOutput');
     const openBdMenu = document.getElementById('openBdMenu');
     const exportBdMenu = document.getElementById('exportBdMenu');
-
     
-
     // === Inicializar Blockly ===
     this.workspace = Blockly.inject(blocklyDiv, {
       toolbox: document.getElementById('toolbox'),
-      theme: darkGlassTheme, // Aplicar el tema personalizado
-      renderer: 'geras' // Renderizador que funciona mejor con temas oscuros
+      theme: darkGlassTheme,
+      renderer: 'geras'
     });
-
+    
     // === APLICAR EFECTO CRISTAL AL FONDO INTERNO ===
     setTimeout(() => {
       const blocklyBackground = document.querySelector('.blocklyMainBackground');
@@ -53,69 +66,76 @@ export const AppController = {
         blocklyBackground.setAttribute('fill', 'transparent');
       }
       
-    // También personalizar la cuadrícula
       const gridPattern = document.querySelector('.blocklyGridPattern');
       if (gridPattern) {
         gridPattern.setAttribute('stroke', 'rgba(255, 255, 255, 0.1)');
       }
     }, 100);
-
+    
     Blockly.svgResize(this.workspace);
     window.addEventListener('resize', () => Blockly.svgResize(this.workspace));
-
+    
+    // === LISTENER PARA GENERAR CÓDIGO SQL ===
+    this.workspace.addChangeListener(() => {
+      const code = javascriptGenerator.workspaceToCode(this.workspace);
+      console.log('SQL generado:', code);
+      
+      // Actualiza el div de SQL con el código generado
+      if (sqlDiv && code.trim()) {
+        sqlDiv.innerHTML = `
+          <h2>Resultado de Query SQL</h2>
+          <pre>${code}</pre>
+        `;
+      } else if (sqlDiv) {
+        // Muestra el ejemplo si no hay bloques
+        //this.showSQLExample();
+      }
+    });
+    
     // === EVENTOS DE INTERFAZ ===
-
-    // Mostrar / ocultar Mermaid
     showMermaidBtn.addEventListener('click', () => {
       mermaidDiv.style.display =
         mermaidDiv.style.display === 'none' ? 'block' : 'none';
       this.resizeBlockly();
     });
-
-    // Mostrar / ocultar SQL Output
+    
     showOutputBtn.addEventListener('click', () => {
       sqlDiv.style.display =
         sqlDiv.style.display === 'none' ? 'block' : 'none';
       this.resizeBlockly();
     });
-
-    // Abrir combo "Abrir BD"
+    
     showOpenBdBtn.addEventListener('click', (e) => {
-      e.stopPropagation(); // Evita cierre inmediato
+      e.stopPropagation();
       openBdMenu.classList.toggle('active');
-      exportBdMenu.classList.remove('active'); // Cierra el otro
+      exportBdMenu.classList.remove('active');
     });
-
-    // Abrir combo "Exportar BD"
+    
     showExportBdBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       exportBdMenu.classList.toggle('active');
       openBdMenu.classList.remove('active');
     });
-
-    // Cerrar menús al hacer clic fuera
+    
     document.addEventListener('click', () => {
       openBdMenu.classList.remove('active');
       exportBdMenu.classList.remove('active');
     });
-
+    
     // === Mostrar ejemplos iniciales ===
-    console.log('Blockly en funcionamiento', this.workspace);
+    console.log('Blockly inicializado con bloques SQL', this.workspace);
     this.showMermaidExample("Esquema_Estudiantes");
-    this.showSQLExample();
+    // this.showSQLExample();
   },
-
-  // === Método para redimensionar Blockly ===
+  
   resizeBlockly: function () {
     if (this.workspace) {
       Blockly.svgResize(this.workspace);
     }
   },
-
-  // Mostrar ejemplo Mermaid (diagrama ER) 
+  
   showMermaidExample: async function (schemaName) {
     const mermaidDiv = document.getElementById('mermaidDiv');
-
     const diagram = `
 erDiagram
   STUDENTS {
@@ -128,26 +148,23 @@ erDiagram
   }
   STUDENTS ||--|| COURSES : takes
     `;
-
-    // Generar HTML contenedor
+    
     mermaidDiv.innerHTML = `
       <h2>Modelo Entidad-Relación — Esquema: 
-        <span style="color :#00ff99">${schemaName}</span>
+        <span style="color:#00ff99">${schemaName}</span>
       </h2>
       <div id="mermaidDiagram"></div>
     `;
-
+    
     try {
-      // Renderizar diagrama 
       const { svg } = await mermaid.render('er-diagram', diagram);
       document.getElementById('mermaidDiagram').innerHTML = svg;
     } catch (error) {
       console.error("Error rendering Mermaid diagram:", error);
-      mermaidDiv.innerHTML += `<p> Error al renderizar diagrama</p>`;
+      mermaidDiv.innerHTML += `<p>Error al renderizar diagrama</p>`;
     }
   },
-
-  // Mostrar SQL de ejemplo
+  
   showSQLExample: function () {
     const sqlDiv = document.getElementById('sqlOutput');
     sqlDiv.innerHTML = `
