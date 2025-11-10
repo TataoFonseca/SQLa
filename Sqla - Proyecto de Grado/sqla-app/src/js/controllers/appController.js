@@ -3,9 +3,14 @@ import * as Blockly from 'blockly';
 import { javascriptGenerator } from 'blockly/javascript';
 import mermaid from 'mermaid';
 
-// IMPORTA TUS BLOQUES
+
+// BLOQUES DDL
+import { CREATE_TABLE_DEFINITION, CREATE_TABLE_GENERATOR } from '../blocks/ddl_CreateTableBlock.js';
+import { COLUMN_DEFINITION, COLUMN_GENERATOR } from '../blocks/ddl_columnDefinitionBlock.js';
+// BLOQUES DML
 import { SELECT_DEFINITION, SELECT_GENERATOR } from '../blocks/dml_SelectBlock.js'; 
 import { FROM_DEFINITION, FROM_GENERATOR } from '../blocks/dml_FromBlock.js';
+
 
 mermaid.initialize({
   startOnLoad: false,
@@ -17,13 +22,20 @@ export const AppController = {
   workspace: null,
   
   init: function () {
-    // === REGISTRA LOS BLOQUES (JSON) ===
+    // === REGISTRO LOS BLOQUES (JSON) ===
     Blockly.defineBlocksWithJsonArray([
+      CREATE_TABLE_DEFINITION,
+      COLUMN_DEFINITION,
       SELECT_DEFINITION, 
       FROM_DEFINITION 
     ]);
     
-    // === REGISTRA LOS GENERADORES ===
+    // === REGISTRO DE GENERADORES DDL===
+    javascriptGenerator['sql_create_table'] = CREATE_TABLE_GENERATOR;
+    javascriptGenerator['sql_column_definition'] = COLUMN_GENERATOR;
+    
+
+    // === REGISTRA LOS GENERADORES DML===
     javascriptGenerator['sql_select'] = SELECT_GENERATOR;
     javascriptGenerator['sql_from'] = FROM_GENERATOR;
     
