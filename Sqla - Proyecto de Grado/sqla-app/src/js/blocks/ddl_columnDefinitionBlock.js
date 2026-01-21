@@ -28,7 +28,7 @@ export const COLUMN_DEFINITION = {
 };
 
 // === GENERADOR (JS) ===
-export const COLUMN_GENERATOR = function(block) {
+export const COLUMN_GENERATOR = function(block, generator) {
   const columnName = block.getFieldValue('COLUMN_NAME');
   const dataType = block.getFieldValue('DATA_TYPE');
   

@@ -27,11 +27,11 @@ export const CREATE_TABLE_DEFINITION = {
 };
 
 // === GENERADOR (JS) ===
-export const CREATE_TABLE_GENERATOR = function(block) {
+export const CREATE_TABLE_GENERATOR = function(block, generator) {
   const tableName = block.getFieldValue('TABLE_NAME');
   
   // 'statementToCode' procesa todos los bloques hijos conectados a "COLUMNS"
-  const columns = javascriptGenerator.statementToCode(block, 'COLUMNS');
+  const columns = generator.statementToCode(block, 'COLUMNS');
   
   // Ensamble del código
   const code = `CREATE TABLE ${tableName} (\n${columns.trim()}\n);\n`;

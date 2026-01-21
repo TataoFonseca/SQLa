@@ -6,7 +6,7 @@ import mermaid from 'mermaid';
 
 // BLOQUES DDL
 import { CREATE_TABLE_DEFINITION, CREATE_TABLE_GENERATOR } from '../blocks/ddl_CreateTableBlock.js';
-import { COLUMN_DEFINITION, COLUMN_GENERATOR } from '../blocks/ddl_columnDefinitionBlock.js';
+import { COLUMN_DEFINITION, COLUMN_GENERATOR } from '../blocks/ddl_ColumnDefinitionBlock.js';
 // BLOQUES DML
 import { SELECT_DEFINITION, SELECT_GENERATOR } from '../blocks/dml_SelectBlock.js'; 
 import { FROM_DEFINITION, FROM_GENERATOR } from '../blocks/dml_FromBlock.js';
@@ -31,13 +31,28 @@ export const AppController = {
     ]);
     
     // === REGISTRO DE GENERADORES DDL===
-    javascriptGenerator['sql_create_table'] = CREATE_TABLE_GENERATOR;
-    javascriptGenerator['sql_column_definition'] = COLUMN_GENERATOR;
-    
+    //javascriptGenerator['sql_create_table'] = CREATE_TABLE_GENERATOR;
+    //javascriptGenerator['sql_column_definition'] = COLUMN_GENERATOR;
+
+    javascriptGenerator.forBlock['sql_create_table'] = function(block) {
+      return CREATE_TABLE_GENERATOR(block, javascriptGenerator);
+    };
+
+    javascriptGenerator.forBlock['sql_column_definition'] = function(block) {
+      return COLUMN_GENERATOR(block, javascriptGenerator);
+    };
 
     // === REGISTRA LOS GENERADORES DML===
-    javascriptGenerator['sql_select'] = SELECT_GENERATOR;
-    javascriptGenerator['sql_from'] = FROM_GENERATOR;
+    //javascriptGenerator['sql_select'] = SELECT_GENERATOR;
+    //javascriptGenerator['sql_from'] = FROM_GENERATOR;
+
+    javascriptGenerator.forBlock['sql_select'] = function(block) {
+      return SELECT_GENERATOR(block, javascriptGenerator);
+    };
+
+    javascriptGenerator.forBlock['sql_from'] = function(block) {
+      return FROM_GENERATOR(block, javascriptGenerator);
+    };
     
     // === TEMA PERSONALIZADO PARA BLOCKLY ===
     const darkGlassTheme = Blockly.Theme.defineTheme('darkGlass', {
@@ -100,7 +115,7 @@ export const AppController = {
         `;
       } else if (sqlDiv) {
         // Muestra el ejemplo si no hay bloques
-        //this.showSQLExample();
+        this.showSQLExample();
       }
     });
     
@@ -137,7 +152,7 @@ export const AppController = {
     // === Mostrar ejemplos iniciales ===
     console.log('Blockly inicializado con bloques SQL', this.workspace);
     this.showMermaidExample("Esquema_Estudiantes");
-    // this.showSQLExample();
+    this.showSQLExample();
   },
   
   resizeBlockly: function () {

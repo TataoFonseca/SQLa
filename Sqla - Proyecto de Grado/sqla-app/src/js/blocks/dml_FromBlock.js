@@ -18,7 +18,7 @@ export const FROM_DEFINITION = {
     "helpUrl": ""
 };
 
-export const FROM_GENERATOR = function(block) {
+export const FROM_GENERATOR = function(block, generator) {
     const tableName = block.getFieldValue('TABLE_NAME');
     const code = 'FROM ' + tableName + '\n';
     return code;

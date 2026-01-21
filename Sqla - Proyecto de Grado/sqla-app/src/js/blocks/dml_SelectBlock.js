@@ -18,8 +18,9 @@ export const SELECT_DEFINITION = {
     "helpUrl": ""
 };
 
-export const SELECT_GENERATOR = function(block) {
+export const SELECT_GENERATOR = function(block, generator) {
     // Nota: 'Blockly' está disponible globalmente gracias a las importaciones del controlador
-    const columns = Blockly.JavaScript.valueToCode(block, 'COLUMNS', Blockly.JavaScript.ORDER_NONE) || '*'; 
-    return 'SELECT ' + columns + '\n';
+    const columns = generator.valueToCode(block, 'COLUMNS', Blockly.JavaScript.ORDER_NONE) || '*'; 
+    const code = `SELECT ${columns}\n`;
+    return code;
 };
