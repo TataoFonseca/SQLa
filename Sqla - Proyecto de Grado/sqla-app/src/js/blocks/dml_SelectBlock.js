@@ -20,7 +20,7 @@ export const SELECT_DEFINITION = {
 
 export const SELECT_GENERATOR = function(block, generator) {
     // Nota: 'Blockly' está disponible globalmente gracias a las importaciones del controlador
-    const columns = generator.valueToCode(block, 'COLUMNS', Blockly.JavaScript.ORDER_NONE) || '*'; 
+    const columns = generator.valueToCode(block, 'COLUMNS', generator.ORDER_NONE) || '*'; 
     const code = `SELECT ${columns}\n`;
     return code;
 };
