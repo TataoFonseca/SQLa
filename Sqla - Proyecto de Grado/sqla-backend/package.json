@@ -12,6 +12,8 @@
   "dependencies": {
     "cors": "^2.8.6",
     "express": "^5.2.1",
-    "mssql": "^12.2.0"
+    "mssql": "^12.2.0",
+    "node-sql-parser": "^5.4.0",
+    "uuid": "^13.0.0"
   }
 }
