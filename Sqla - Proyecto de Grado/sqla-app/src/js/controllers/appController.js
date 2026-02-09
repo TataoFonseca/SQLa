@@ -9,6 +9,7 @@ import { CREATE_TABLE_DEFINITION, CREATE_TABLE_GENERATOR } from '../blocks/ddl_C
 import { COLUMN_DEFINITION, COLUMN_GENERATOR } from '../blocks/ddl_ColumnDefinitionBlock.js';
 // BLOQUES DML
 import { SELECT_DEFINITION, SELECT_GENERATOR } from '../blocks/dml_SelectBlock.js'; 
+import { EXPRESSION_DEFINITION, EXPRESSION_GENERATOR } from '../blocks/dml_ExpressionBlock.js'; 
 import { FROM_DEFINITION, FROM_GENERATOR } from '../blocks/dml_FromBlock.js';
 
 
@@ -27,6 +28,7 @@ export const AppController = {
       CREATE_TABLE_DEFINITION,
       COLUMN_DEFINITION,
       SELECT_DEFINITION, 
+      EXPRESSION_DEFINITION,
       FROM_DEFINITION 
     ]);
     
@@ -49,6 +51,10 @@ export const AppController = {
     javascriptGenerator.forBlock['sql_select'] = function(block) {
       return SELECT_GENERATOR(block, javascriptGenerator);
     };
+
+    javascriptGenerator.forBlock['sql_expression'] = function(block) {
+      return EXPRESSION_GENERATOR(block, javascriptGenerator);
+    }
 
     javascriptGenerator.forBlock['sql_from'] = function(block) {
       return FROM_GENERATOR(block, javascriptGenerator);
@@ -86,7 +92,7 @@ export const AppController = {
       renderer: 'geras'
     });
     
-    // === APLICAR EFECTO CRISTAL AL FONDO INTERNO ===
+    // === EFECTO CRISTAL AL FONDO INTERNO ===
     setTimeout(() => {
       const blocklyBackground = document.querySelector('.blocklyMainBackground');
       if (blocklyBackground) {
