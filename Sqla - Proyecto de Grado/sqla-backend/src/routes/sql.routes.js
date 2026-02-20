@@ -1,7 +1,6 @@
 import { Router } from "express";
 import { analyzeSQL, listQueries } from "../controllers/sql.controller.js";
-import { createSession } from "../services/session.service.js";
-import { getSession } from "../sessions/session.store.js";
+import { createSession, validateSession } from "../services/session.service.js";
 
 const router = Router();
 
@@ -11,10 +10,9 @@ router.post("/session", async (req, res) => {
     res.json(data);
 });
 
-// 🔹 Obtener sesión
-router.get("/session/:id", (req, res) => {
-    const { id } = req.params;
-    const session = getSession(id);
+// 🔹 Obtener sesión desde DB
+router.get("/session/:id", async (req, res) => {
+    const session = await validateSession(req.params.id);
 
     if (!session) {
         return res.status(404).json({ message: "Session not found" });
@@ -23,7 +21,6 @@ router.get("/session/:id", (req, res) => {
     res.json(session);
 });
 
-// Tus rutas actuales
 router.post("/analyze", analyzeSQL);
 router.get("/history/:sessionId", listQueries);
 

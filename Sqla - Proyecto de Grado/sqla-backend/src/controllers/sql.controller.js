@@ -1,23 +1,32 @@
 import { parseSQL } from "../services/sqlParser.service.js";
 import { validateQuery } from "../services/queryValidator.js";
 import { executeSQL } from "../services/sqlExecutor.service.js";
-import { getSession } from "../sessions/session.store.js";
+import { validateSession, updateLastUsed } from "../services/session.service.js";
 import { saveQuery, getQueriesBySession } from "../services/project.service.js";
 
 export async function analyzeSQL(req, res) {
     try {
-        const { sql, sessionId } = req.body;
+        const { sessionId, sql } = req.body;
 
         if (!sessionId) {
             return res.status(400).json({ ok: false, error: "sessionId requerido" });
         }
 
-        const session = getSession(sessionId);
+        if (!sql) {
+            return res.status(400).json({ ok: false, error: "SQL requerido" });
+        }
+
+        // 🔹 Validar sesión en DB
+        const session = await validateSession(sessionId);
 
         if (!session) {
             return res.status(404).json({ ok: false, error: "Sesión no encontrada" });
         }
 
+        // 🔹 Actualizar última actividad
+        await updateLastUsed(sessionId);
+
+        // 🔹 Parsear
         const parsed = parseSQL(sql);
 
         const validation = validateQuery(parsed);
@@ -25,9 +34,8 @@ export async function analyzeSQL(req, res) {
             return res.status(400).json({ ok: false, error: validation.message });
         }
 
-        /* updateSessionState(sessionId, parsed); */
-
-        const executionResult = await executeSQL(sql);
+        // 🔹 Ejecutar en el schema correcto
+        const executionResult = await executeSQL(sql, session.schema_name);
 
         const id = await saveQuery({
             sessionId,
@@ -38,7 +46,7 @@ export async function analyzeSQL(req, res) {
             result: executionResult
         });
 
-        res.json({
+        return res.json({
             ok: true,
             id,
             executionResult,
@@ -47,7 +55,10 @@ export async function analyzeSQL(req, res) {
 
     } catch (err) {
         console.error("ERROR COMPLETO:", err);
-        res.status(400).json({ ok: false, error: err?.message || "Error desconocido" });
+        return res.status(500).json({
+            ok: false,
+            error: err.message
+        });
     }
 }
 
