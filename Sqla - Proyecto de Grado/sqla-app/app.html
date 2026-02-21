@@ -64,7 +64,59 @@
     </category>
     <category name="Sentencias DML" colour="160">
       <block type="sql_select"></block>
+      <block type="sql_expression"></block>
       <block type="sql_from"></block>
+
+            <!-- ⭐ SUBCATEGORÍA PARA FUNCIONES DE AGREGACIÓN -->
+      <category name="Funciones de Agregación" colour="120">
+        
+        <!-- SUM con Expression que usa extensión de agregación -->
+        <block type="sql_sum">
+          <value name="EXPRESSION">
+            <block type="sql_aggregate_expression">
+              <field name="COLUMN">columna</field>
+            </block>
+          </value>
+        </block>
+        
+        <!-- AVG con Expression que usa extensión de agregación -->
+        <block type="sql_avg">
+          <value name="EXPRESSION">
+            <block type="sql_aggregate_expression">
+              <field name="COLUMN">columna</field>
+            </block>
+          </value>
+        </block>
+        
+        <!-- COUNT con Expression que usa extensión de agregación -->
+        <block type="sql_count">
+          <value name="EXPRESSION">
+            <block type="sql_aggregate_expression">
+              <field name="COLUMN">columna</field>
+            </block>
+          </value>
+        </block>
+        
+        <!-- MIN con Expression que usa extensión de agregación -->
+        <block type="sql_min">
+          <value name="EXPRESSION">
+            <block type="sql_aggregate_expression">
+              <field name="COLUMN">columna</field>
+            </block>
+          </value>
+        </block>
+        
+        <!-- MAX con Expression que usa extensión de agregación -->
+        <block type="sql_max">
+          <value name="EXPRESSION">
+            <block type="sql_aggregate_expression">
+              <field name="COLUMN">columna</field>
+            </block>
+          </value>
+        </block>
+        
+      </category>
+
     </category>
     <category name="Logic" colour="%{BKY_LOGIC_HUE}">
       <block type="controls_if"></block>
