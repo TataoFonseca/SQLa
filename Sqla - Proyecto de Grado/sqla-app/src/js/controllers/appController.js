@@ -10,22 +10,40 @@ import { COLUMN_DEFINITION, COLUMN_GENERATOR } from '../blocks/ddl_ColumnDefinit
 
 // BLOQUES DML, INCLUYENDO LOS MEJORADOS CON DISTINCT Y TOP
 import { FROM_DEFINITION, FROM_GENERATOR } from '../blocks/dml_FromBlock.js';
+
+// BLOQUES DML
 import { 
   SELECT_DEFINITION, 
   SELECT_GENERATOR, 
 } from '../blocks/dml_SelectBlock.js'; 
 
+// BLOQUE DE EXPRESSION CON MENÚ CONTEXTUAL para BLOQUES DISTINCT Y TOP
 import { 
-  EXPRESSION_DEFINITION, 
-  EXPRESSION_GENERATOR 
-} from '../blocks/dml_ExpressionBlock.js'; 
+  EXPRESSION_DEFINITION, EXPRESSION_GENERATOR } from '../blocks/dml_ExpressionBlock.js'; 
 
-// NUEVOS BLOQUES: DISTINCT Y TOP
+// BLOQUES DML: DISTINCT Y TOP
 import { DISTINCT_DEFINITION, DISTINCT_GENERATOR } from '../blocks/dml_DistinctBlock.js';
 import { TOP_DEFINITION, TOP_GENERATOR } from '../blocks/dml_TopBlock.js';
 
-// EXTENSIÓN DEL MENÚ CONTEXTUAL
+// EXTENSIÓN DEL MENÚ CONTEXTUAL para DISTINCT/TOP en EXPRESSION
 import { registerExpressionContextMenu } from '../blocks/extensions/expressionContextMenu.js';
+
+
+// BLOQUE DE EXPRESSION PROPIA DE FUNCIONES DE AGREGACIÓN
+import { AGGREGATE_EXPRESSION_DEFINITION, AGGREGATE_EXPRESSION_GENERATOR } from '../blocks/dml_aggregateFunctionsExpressionBlock.js'; 
+
+// BLOQUES DE FUNCIONES DE AGREGACIÓN
+import { 
+  SUM_DEFINITION, SUM_GENERATOR,
+  AVG_DEFINITION, AVG_GENERATOR,
+  COUNT_DEFINITION, COUNT_GENERATOR,
+  MIN_DEFINITION, MIN_GENERATOR,
+  MAX_DEFINITION, MAX_GENERATOR
+} from '../blocks/dml_aggregateFunctionsBlock.js';
+
+// EXTENSIÓN PARA EXPRESIONES EN FUNCIONES DE AGREGACIÓN
+import { registerAggregateFunctionExpressionContextMenu } from '../blocks/extensions/aggregateFunctionExpressionContextMenu.js';
+
 
 mermaid.initialize({
   startOnLoad: false,
@@ -37,11 +55,24 @@ export const AppController = {
   workspace: null,
   
   init: function () {
+
+    // === DEFINIR ORDEN DE OPERACIONES PARA EL GENERADOR ===
+    javascriptGenerator.ORDER_ATOMIC = 0;
+    javascriptGenerator.ORDER_FUNCTION_CALL = 1;
+    javascriptGenerator.ORDER_MEMBER = 2;
+    javascriptGenerator.ORDER_MULTIPLICATION = 3;
+    javascriptGenerator.ORDER_DIVISION = 3;
+    javascriptGenerator.ORDER_ADDITION = 4;
+    javascriptGenerator.ORDER_SUBTRACTION = 4;
+    javascriptGenerator.ORDER_NONE = 99;
     
-    //REGISTRO DE LA EXTENSIÓN DEL MENÚ CONTEXTUAL (ANTES DE LOS BLOQUES) - SE USA EN EL BLOQUE DE EXPRESIÓN
+    //REGISTRO DEL MENÚ CONTEXTUAL PARA EL BLOQUE DE EXPRESIÓN (ANTES DE LOS BLOQUES)
     registerExpressionContextMenu();
-    
-    //REGISTRO DE BLOQUES (JSON) ===
+
+    //REGISTRO DEL MENÚ CONTEXTUAL DE EXTENSIÓN PARA EXPRESIONES EN FUNCIONES DE AGREGACIÓN
+    registerAggregateFunctionExpressionContextMenu();
+  
+    // PASO 2: REGISTRO DE BLOQUES (JSON) ===
     Blockly.defineBlocksWithJsonArray([
       // DDL
       CREATE_TABLE_DEFINITION,
@@ -51,13 +82,22 @@ export const AppController = {
       FROM_DEFINITION,
       SELECT_DEFINITION,
       EXPRESSION_DEFINITION,
-      // bloquesDISTINCT Y TOP
+      AGGREGATE_EXPRESSION_DEFINITION,  // Bloque de expresión para funciones de agregación
+      
+      // DML: DISTINCT Y TOP
       DISTINCT_DEFINITION,
       TOP_DEFINITION,
+
+      // DML: FUNCIONES DE AGREGACIÓN
+      SUM_DEFINITION,
+      AVG_DEFINITION,
+      COUNT_DEFINITION,
+      MIN_DEFINITION,
+      MAX_DEFINITION
       
     ]);
     
-    // === PASO 4: REGISTRO DE GENERADORES DDL ===
+    // === PASO 3: REGISTRO DE GENERADORES DDL ===
     javascriptGenerator.forBlock['sql_create_table'] = function(block) {
       return CREATE_TABLE_GENERATOR(block, javascriptGenerator);
     };
@@ -66,7 +106,7 @@ export const AppController = {
       return COLUMN_GENERATOR(block, javascriptGenerator);
     };
 
-    // === PASO 5: REGISTRA LOS GENERADORES DML ===
+    // === PASO 4: REGISTRA LOS GENERADORES DML ===
     javascriptGenerator.forBlock['sql_select'] = function(block) {
       return SELECT_GENERATOR(block, javascriptGenerator);
     };
@@ -75,11 +115,15 @@ export const AppController = {
       return EXPRESSION_GENERATOR(block, javascriptGenerator);
     };
 
+    javascriptGenerator.forBlock['sql_aggregate_expression'] = function(block) {
+      return AGGREGATE_EXPRESSION_GENERATOR(block, javascriptGenerator);
+    };
+
     javascriptGenerator.forBlock['sql_from'] = function(block) {
       return FROM_GENERATOR(block, javascriptGenerator);
     };
     
-    // ⭐ PASO 6: GENERADORES PARA DISTINCT Y TOP
+    // === PASO 5: GENERADORES PARA DISTINCT Y TOP
     javascriptGenerator.forBlock['sql_distinct'] = function(block) {
       return DISTINCT_GENERATOR(block, javascriptGenerator);
     };
@@ -87,6 +131,30 @@ export const AppController = {
     javascriptGenerator.forBlock['sql_top'] = function(block) {
       return TOP_GENERATOR(block, javascriptGenerator);
     };
+
+    // === GENERADORES DE FUNCIONES DE AGREGACIÓN
+    javascriptGenerator.forBlock['sql_sum'] = function(block) {
+      return SUM_GENERATOR(block, javascriptGenerator);
+    };
+
+    javascriptGenerator.forBlock['sql_avg'] = function(block) {
+      return AVG_GENERATOR(block, javascriptGenerator);
+    };
+    
+    javascriptGenerator.forBlock['sql_count'] = function(block) {
+      return COUNT_GENERATOR(block, javascriptGenerator);
+    };
+    
+    javascriptGenerator.forBlock['sql_min'] = function(block) {
+      return MIN_GENERATOR(block, javascriptGenerator);
+    };
+    
+    javascriptGenerator.forBlock['sql_max'] = function(block) {
+      return MAX_GENERATOR(block, javascriptGenerator);
+    };
+
+
+
     
     // === TEMA PERSONALIZADO PARA BLOCKLY ===
     const darkGlassTheme = Blockly.Theme.defineTheme('darkGlass', {

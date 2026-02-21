@@ -1,8 +1,5 @@
-// // sqla-app/src/js/blocks/dml_selectBlock.js
-// // SOLO EXPORTA: La forma (JSON) y el generador (función)
-
-//SELECT sin las variables globales de DISTINCT y TOP, para simplificar el bloque principal. Las opciones globales (DISTINCT y TOP) se pueden manejar desde el bloque ExpressionBlock.js.
-// sqla-app/src/js/blocks/dml_SelectBlock.js
+// sqla-app/src/js/blocks/dml_selectBlock.js
+// SOLO EXPORTA: La forma (JSON) y el generador (función)
 
 export const SELECT_DEFINITION = {
   "type": "sql_select",
@@ -24,7 +21,7 @@ export const SELECT_DEFINITION = {
 
 export const SELECT_GENERATOR = function(block, generator) {
     // Obtener el valor de la expresión
-  const expr = generator.valueToCode(block, 'EXPR0', generator.ORDER_NONE);
+  const expr = generator.valueToCode(block, 'EXPR0', generator.ORDER_ATOMIC); //Cambiado de ORDER_NONE a ORDER_ATOMIC
   
   if (!expr) {
     return 'SELECT *\n';
