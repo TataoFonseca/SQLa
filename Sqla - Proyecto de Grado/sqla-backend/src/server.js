@@ -1,7 +1,11 @@
-import app from "./app.js";
+import express from "express";
+import sqlRoutes from "./routes/sql.routes.js";
 
-const PORT = 3000;
+const app = express();
+app.use(express.json());
 
-app.listen(PORT, () => {
-  console.log(`Backend SQLa escuchando en http://localhost:${PORT}`);
+app.use("/api/sql", sqlRoutes);
+
+app.listen(3000, () => {
+  console.log("Backend corriendo en http://localhost:3000");
 });
