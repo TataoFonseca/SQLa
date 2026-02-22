@@ -4,7 +4,7 @@ import { createSession, validateSession } from "../services/session.service.js";
 
 const router = Router();
 
-// 🔹 Crear sesión
+//  Crear sesión
 router.post("/session", async (req, res) => {
     try {
         const data = await createSession();
@@ -15,7 +15,7 @@ router.post("/session", async (req, res) => {
     }
 });
 
-// 🔹 Obtener sesión desde DB
+//  Obtener sesión desde DB
 router.get("/session/:id", async (req, res) => {
     try {
         const session = await validateSession(req.params.id);
@@ -31,10 +31,10 @@ router.get("/session/:id", async (req, res) => {
     }
 });
 
-// 🔹 Analizar y ejecutar SQL
+// Analizar y ejecutar SQL
 router.post("/analyze", analyzeSQL);
 
-// 🔹 Obtener historial de consultas
+//  Obtener historial de consultas
 router.get("/history/:sessionId", listQueries);
 
 export default router;
