@@ -16,17 +16,17 @@ export async function analyzeSQL(req, res) {
             return res.status(400).json({ ok: false, error: "SQL requerido" });
         }
 
-        // 🔹 Validar sesión en DB
+        //  Validar sesión en DB
         const session = await validateSession(sessionId);
 
         if (!session) {
             return res.status(404).json({ ok: false, error: "Sesión no encontrada" });
         }
 
-        // 🔹 Actualizar última actividad
+        //  Actualizar última actividad
         await updateLastUsed(sessionId);
 
-        // 🔹 Parsear con el schema de la sesión
+        // Parsear con el schema de la sesión
         const parsed = parseSQL(sql, session.schema_name);
 
         const validation = validateQuery(parsed);
@@ -49,7 +49,6 @@ export async function analyzeSQL(req, res) {
             });
         } catch (saveError) {
             console.warn("No se pudo guardar el historial:", saveError.message);
-            // Continuamos sin guardar el historial
         }
 
         return res.json({

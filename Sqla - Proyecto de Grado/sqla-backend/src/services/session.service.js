@@ -7,12 +7,10 @@ export async function createSession() {
     const sessionId = uuidv4();
     const schemaName = `session_${sessionId.replace(/-/g, "")}`;
 
-    // 1️⃣ Crear schema
     await pool.request().query(`
         CREATE SCHEMA ${schemaName}
     `);
 
-    // 2️⃣ Crear tabla demo
     await pool.request().query(`
         CREATE TABLE ${schemaName}.usuarios (
             id INT PRIMARY KEY IDENTITY(1,1),
@@ -24,7 +22,6 @@ export async function createSession() {
         VALUES ('Ana', 22), ('Luis', 30);
     `);
 
-    // 3️⃣ Guardar sesión en DB
     await pool.request()
         .input("id", sessionId)
         .input("schema", schemaName)

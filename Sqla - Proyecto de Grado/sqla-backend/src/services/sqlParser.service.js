@@ -36,7 +36,7 @@ export function parseSQL(sql, schemaName = null) {
             needsSchema = true;
         } else {
             // Si falla la transformación, usamos el SQL original
-            console.warn('⚠️ Transformación falló, usando SQL original:', transformResult.error);
+            console.warn(' Transformación falló, usando SQL original:', transformResult.error);
             transformedSQL = cleanSQL;
         }
     }

@@ -167,11 +167,11 @@ export function transformSQL(sql, schemaName) {
 
         // Parsear a AST usando la instancia del parser
         let ast = parser.astify(sql, opt);
-        console.log('📊 AST generado:', JSON.stringify(ast, null, 2));
+        console.log(' AST generado:', JSON.stringify(ast, null, 2));
 
         // Inyectar schema
         ast = injectSchemaInAST(ast, schemaName);
-        console.log('📊 AST transformado:', JSON.stringify(ast, null, 2));
+        console.log(' AST transformado:', JSON.stringify(ast, null, 2));
 
         // Reconstruir SQL usando la instancia del parser
         const transformedSQL = parser.sqlify(ast, opt);
@@ -184,7 +184,7 @@ export function transformSQL(sql, schemaName) {
             success: true
         };
     } catch (error) {
-        console.error('❌ Error transformando SQL:', error);
+        console.error(' Error transformando SQL:', error);
         return {
             original: sql,
             transformed: sql, // Devolvemos el original si hay error

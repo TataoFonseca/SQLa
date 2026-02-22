@@ -23,10 +23,8 @@ export async function executeSQL(sqlQuery, schemaName) {
     const uniqueSchemas = new Set();
     for (const match of matches) {
         const usedSchema = match[1];
-
-        // Ignorar si parece un número decimal (como 999.99)
         if (/^\d+$/.test(usedSchema)) {
-            continue; // Es un número, no un schema
+            continue;
         }
 
         uniqueSchemas.add(usedSchema);
@@ -50,9 +48,6 @@ export async function executeSQL(sqlQuery, schemaName) {
             ${sqlToExecute}
         `;
 
-        console.log('🔍 SQL Original:', sqlQuery);
-        console.log('🔍 SQL Transformado:', sqlToExecute);
-
         const result = await pool.request().query(finalQuery);
 
         return {
@@ -64,7 +59,7 @@ export async function executeSQL(sqlQuery, schemaName) {
         };
 
     } catch (error) {
-        console.error("❌ Error ejecutando en SQL Server:", error.message);
+        console.error("Error ejecutando en SQL Server:", error.message);
 
         if (error.message.includes("There is already an object named")) {
             throw new Error(`La tabla ya existe en tu schema. Las tablas son aisladas por sesión.`);
