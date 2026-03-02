@@ -29,14 +29,20 @@
 
 export const EXPRESSION_DEFINITION = {
   "type": "sql_expression",
-  "message0": "%1",
+  "message0": "%1 %2",
   "args0": [
     {
       "type": "field_input",
       "name": "COLUMN",
       "text": "column_name"
+    },
+    {
+      "type": "input_value",
+      "name": "NEXT",
+      "check": ["Expression", "Column", "Aggregate", "DistinctExpression", "TopExpression"]
     }
   ],
+  "inputsInline": true,
   "output": ["Expression", "Column"],
   "colour": 160,
   "tooltip": "Nombre de columna. Click derecho para agregar DISTINCT o TOP",
@@ -46,5 +52,30 @@ export const EXPRESSION_DEFINITION = {
 
 export const EXPRESSION_GENERATOR = function(block, generator) {
   const column = block.getFieldValue('COLUMN');
-  return [column, generator.ORDER_ATOMIC];
+
+  // Recorrer la cadena NEXT
+  const next = generator.valueToCode(block, 'NEXT', generator.ORDER_ATOMIC);
+  const code = next ? column + ', ' + next : column;
+
+  return [code, generator.ORDER_ATOMIC];
+};
+
+//Registrar EXPRESSION_ONCHANGE para manejar la coma dinámica en appController.js
+
+export const EXPRESSION_ONCHANGE = function(event) {
+  if (event.type !== 'move' && event.type !== 'change') return;
+
+  const nextInput = this.getInput('NEXT');
+  if (!nextInput) return;
+
+  const isConnected = nextInput.connection && nextInput.connection.isConnected();
+  // this.setFieldValue(isConnected ? ',' : '', 'COMMA');
+
+  if (isConnected && !this.getField('COMMA')) {
+    nextInput.appendField(',', 'COMMA');
+  }
+
+  if (!isConnected && this.getField('COMMA')) {
+    nextInput.removeField('COMMA');
+  }
 };

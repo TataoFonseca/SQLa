@@ -8,18 +8,15 @@ import mermaid from 'mermaid';
 import { CREATE_TABLE_DEFINITION, CREATE_TABLE_GENERATOR } from '../blocks/ddl_CreateTableBlock.js';
 import { COLUMN_DEFINITION, COLUMN_GENERATOR } from '../blocks/ddl_ColumnDefinitionBlock.js';
 
-// BLOQUES DML, INCLUYENDO LOS MEJORADOS CON DISTINCT Y TOP
-import { FROM_DEFINITION, FROM_GENERATOR } from '../blocks/dml_FromBlock.js';
-
 // BLOQUES DML
-import { 
-  SELECT_DEFINITION, 
-  SELECT_GENERATOR, 
-} from '../blocks/dml_SelectBlock.js'; 
+import { FROM_DEFINITION, FROM_GENERATOR } from '../blocks/dml_FromBlock.js';
+import { SELECT_DEFINITION, SELECT_GENERATOR, } from '../blocks/dml_SelectBlock.js'; 
 
 // BLOQUE DE EXPRESSION CON MENÚ CONTEXTUAL para BLOQUES DISTINCT Y TOP
 import { 
-  EXPRESSION_DEFINITION, EXPRESSION_GENERATOR } from '../blocks/dml_ExpressionBlock.js'; 
+  EXPRESSION_DEFINITION, EXPRESSION_GENERATOR, 
+  EXPRESSION_ONCHANGE // Onchange para manejar la coma dinámica en el bloque de expresión
+} from '../blocks/dml_ExpressionBlock.js'; 
 
 // BLOQUES DML: DISTINCT Y TOP
 import { DISTINCT_DEFINITION, DISTINCT_GENERATOR } from '../blocks/dml_DistinctBlock.js';
@@ -29,8 +26,8 @@ import { TOP_DEFINITION, TOP_GENERATOR } from '../blocks/dml_TopBlock.js';
 import { registerExpressionContextMenu } from '../blocks/extensions/expressionContextMenu.js';
 
 
-// BLOQUE DE EXPRESSION PROPIA DE FUNCIONES DE AGREGACIÓN
-import { AGGREGATE_EXPRESSION_DEFINITION, AGGREGATE_EXPRESSION_GENERATOR } from '../blocks/dml_aggregateFunctionsExpressionBlock.js'; 
+// BLOQUE DE EXPRESSION dentro de funciones de agregación (sin NEXT, sin onchange)
+import { AGGREGATE_EXPRESSION_DEFINITION, AGGREGATE_EXPRESSION_GENERATOR, } from '../blocks/dml_aggregateFunctionsExpressionBlock.js'; 
 
 // BLOQUES DE FUNCIONES DE AGREGACIÓN
 import { 
@@ -38,7 +35,8 @@ import {
   AVG_DEFINITION, AVG_GENERATOR,
   COUNT_DEFINITION, COUNT_GENERATOR,
   MIN_DEFINITION, MIN_GENERATOR,
-  MAX_DEFINITION, MAX_GENERATOR
+  MAX_DEFINITION, MAX_GENERATOR,
+  AGGREGATE_FUNCTION_ONCHANGE // Onchange compartido para todos los bloques de funciones de agregación para añadir soporte de coma dinámica
 } from '../blocks/dml_aggregateFunctionsBlock.js';
 
 // EXTENSIÓN PARA EXPRESIONES EN FUNCIONES DE AGREGACIÓN
@@ -73,6 +71,7 @@ export const AppController = {
     registerAggregateFunctionExpressionContextMenu();
   
     // PASO 2: REGISTRO DE BLOQUES (JSON) ===
+    //Bloques sin OnChange, se usa defineBlocksWithJsonArray
     Blockly.defineBlocksWithJsonArray([
       // DDL
       CREATE_TABLE_DEFINITION,
@@ -81,21 +80,50 @@ export const AppController = {
       // DML
       FROM_DEFINITION,
       SELECT_DEFINITION,
-      EXPRESSION_DEFINITION,
-      AGGREGATE_EXPRESSION_DEFINITION,  // Bloque de expresión para funciones de agregación
-      
-      // DML: DISTINCT Y TOP
-      DISTINCT_DEFINITION,
-      TOP_DEFINITION,
 
-      // DML: FUNCIONES DE AGREGACIÓN
-      SUM_DEFINITION,
-      AVG_DEFINITION,
-      COUNT_DEFINITION,
-      MIN_DEFINITION,
-      MAX_DEFINITION
+      // DML: DISTINCT Y TOP
+      DISTINCT_DEFINITION, // Ahora es flag global, sin EXPRESSION input
+      TOP_DEFINITION, // Ahora es flag global, sin EXPRESSION input
       
     ]);
+
+    // Bloques con onchange (coma dinámica) → registro manual con Blockly.Blocks
+    //DML
+    Blockly.Blocks['sql_expression'] = {
+      init: function() { this.jsonInit(EXPRESSION_DEFINITION); },
+      onchange: EXPRESSION_ONCHANGE
+    };
+
+    Blockly.Blocks['sql_aggregate_expression'] = {
+      init: function() { this.jsonInit(AGGREGATE_EXPRESSION_DEFINITION); }, // Bloque de expresión para funciones de agregación
+    };
+
+    //DML: FUNCIONES DE AGREGACIÓN
+
+    Blockly.Blocks['sql_sum'] = {
+      init: function() { this.jsonInit(SUM_DEFINITION); },
+      onchange: AGGREGATE_FUNCTION_ONCHANGE
+    };
+
+    Blockly.Blocks['sql_avg'] = {
+      init: function() { this.jsonInit(AVG_DEFINITION); },
+      onchange: AGGREGATE_FUNCTION_ONCHANGE
+    };
+
+    Blockly.Blocks['sql_count'] = {
+      init: function() { this.jsonInit(COUNT_DEFINITION); },
+      onchange: AGGREGATE_FUNCTION_ONCHANGE
+    };
+
+    Blockly.Blocks['sql_min'] = {
+      init: function() { this.jsonInit(MIN_DEFINITION); },
+      onchange: AGGREGATE_FUNCTION_ONCHANGE
+    };
+
+    Blockly.Blocks['sql_max'] = {
+      init: function() { this.jsonInit(MAX_DEFINITION); },
+      onchange: AGGREGATE_FUNCTION_ONCHANGE
+    };
     
     // === PASO 3: REGISTRO DE GENERADORES DDL ===
     javascriptGenerator.forBlock['sql_create_table'] = function(block) {
@@ -185,8 +213,55 @@ export const AppController = {
     this.workspace = Blockly.inject(blocklyDiv, {
       toolbox: document.getElementById('toolbox'),
       theme: darkGlassTheme,
-      renderer: 'geras'
+      renderer: 'geras',
+      move: { //añadido, opción de scroll en menus
+        scrollbars: true,
+        drag: true,
+        wheel: true
+      }
     });
+
+    // añadido, deshabilidar autoClose del flyout para que no se cierre al arrastrar bloques
+    if (this.workspace.getFlyout()) {
+      this.workspace.getFlyout().autoClose = false;
+
+      // Fix doble click: escuchar clicks en el toolbox via DOM
+      setTimeout(() => {
+
+          const toolbox = this.workspace.getToolbox();
+          // const toolboxDiv = document.querySelector('.blocklyToolbox');
+          
+          // toolboxDiv.addEventListener('click', () => {
+          //   const selected = toolbox.getSelectedItem();
+          //   console.log('selected:', selected);
+          //   console.log('selected proto methods:', selected ? Object.getOwnPropertyNames(Object.getPrototypeOf(selected)) : 'null');
+          //   console.log('toolbox proto methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(toolbox)));
+          // });
+
+          const dmlItem = toolbox.getToolboxItems().find(item => 
+          item.getName?.() === 'Sentencias DML'
+          );
+  
+  // console.log('dmlItem:', dmlItem);
+  // console.log('dmlItem div:', dmlItem?.getDiv?.());
+  
+          const dmlDiv = dmlItem?.getDiv?.();
+          if (dmlDiv) {
+            dmlDiv.addEventListener('mousedown', () => {
+              // console.log('click en DML div');
+              // console.log('isExpanded:', dmlItem.isExpanded?.());
+              
+              const children = dmlItem.getChildToolboxItems();
+              children.forEach(child => child.setExpanded?.(false));
+              
+              setTimeout(() => {
+                toolbox.clearSelection();
+                setTimeout(() => toolbox.setSelectedItem(dmlItem), 30);
+              }, 30);
+            });
+          }
+      }, 200);
+    }
     
     // === EFECTO CRISTAL AL FONDO INTERNO ===
     setTimeout(() => {

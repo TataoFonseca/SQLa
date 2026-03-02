@@ -7,6 +7,9 @@ import * as Blockly from 'blockly';
  * Registra la extensión del menú contextual
  * Debe llamarse después de importar Blockly
  */
+
+const AGGREGATE_TYPES = ['sql_sum', 'sql_avg', 'sql_count', 'sql_min', 'sql_max']; // Tipos de bloques de agregación para validar, al agregar uno antes o despues, las opciones de DISTINCT/TOP se deben deshabilitar
+
 export function registerExpressionContextMenu() {
   
   Blockly.Extensions.register('expression_context_menu', function() {
@@ -23,15 +26,65 @@ export function registerExpressionContextMenu() {
       const parentBlock = block.getParent();
       const isInDistinct = parentBlock && parentBlock.type === 'sql_distinct';
       const isInTop = parentBlock && parentBlock.type === 'sql_top';
-      
+
+      // Detectar posición en la cadena de bloques para determinar si puede o no poner DISTINCT o TOP
+      const isFirstInChain = parentBlock && parentBlock.type === 'sql_select';
+      const isInChain = parentBlock && (
+      parentBlock.type === 'sql_expression' || 
+      AGGREGATE_TYPES.includes(parentBlock.type)
+      );
+
+      // Detectar si está adyacente a un aggregate (para deshabilitar DISTINCT/TOP)
+      const connectedToBlock = block.getParent();
+      const parentIsAggregate = connectedToBlock && AGGREGATE_TYPES.includes(connectedToBlock.type);
+      const nextBlock = block.getInput('NEXT')?.connection?.targetConnection?.sourceBlock_;
+      const nextIsAggregate = nextBlock && AGGREGATE_TYPES.includes(nextBlock.type);
+      const isAdjacentToAggregate = parentIsAggregate || nextIsAggregate; // Si expression es adyacente a un bloque de agregación, deshabilitar opciones de DISTINCT/TOP
+
+
+      console.log('Nuevos logs para debugging:');
+      console.log('outputConnection:', block.outputConnection);
+      console.log('targetConnection:', block.outputConnection?.targetConnection);
+      console.log('sourceBlock_:', block.outputConnection?.targetConnection?.sourceBlock_);
+      console.log('getParent():', block.getParent()?.type);
+      console.log('getSurroundParent():', block.getSurroundParent()?.type);
+
+      // const ni = block.getInput('NEXT');
+    
       // Separador visual
       options.push({
         text: '─'.repeat(20),
         enabled: false,
         callback: function() {}
       });
+
       
       // ==========================================
+      // INFO: Por al usuario del porqué están deshabilitados 
+      // ==========================================
+      if (isAdjacentToAggregate) {
+        options.push({
+          text: '⚠️ DISTINCT/TOP no aplican junto a funciones de agregación',
+          enabled: false,
+          callback: function() {}
+        });
+        return; // No mostrar opciones de DISTINCT/TOP si Expression está junto a un bloque de agregación
+      }
+
+      // ==========================================
+      // CASO: En cadena pero no es el primero → aviso
+      // ==========================================
+      if (isInChain) {
+        options.push({
+          text: 'DISTINCT/TOP se controlan desde la primera expresión',
+          enabled: false,
+          callback: function() {}
+        });
+        return;
+      }
+      
+      // ==========================================
+      // CASO: Expression suelta o primera en cadena
       // OPCIÓN: + Add DISTINCT
       // ==========================================
       if (!isInDistinct) {
@@ -136,7 +189,6 @@ export function registerExpressionContextMenu() {
           callback: function() {}
         });
       }
-      
       // ==========================================
       // OPCIÓN: Unwrap (Quitar DISTINCT/TOP)
       // ==========================================
