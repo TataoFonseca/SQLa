@@ -247,17 +247,24 @@ export const AppController = {
   
           const dmlDiv = dmlItem?.getDiv?.();
           if (dmlDiv) {
-            dmlDiv.addEventListener('mousedown', () => {
-              // console.log('click en DML div');
-              // console.log('isExpanded:', dmlItem.isExpanded?.());
-              
+            let wasVisible = false;
+            
+            const observer = new MutationObserver(() => {
               const children = dmlItem.getChildToolboxItems();
-              children.forEach(child => child.setExpanded?.(false));
+              const isVisible = children.some(child => child.isVisible?.());
               
-              setTimeout(() => {
-                toolbox.clearSelection();
-                setTimeout(() => toolbox.setSelectedItem(dmlItem), 30);
-              }, 30);
+              // Si pasó de visible a no visible, re-seleccionar DML
+              if (wasVisible && !isVisible) {
+                setTimeout(() => toolbox.setSelectedItem(dmlItem), 50);
+              }
+              
+              wasVisible = isVisible;
+            });
+            
+            observer.observe(dmlDiv, { 
+              subtree: true, 
+              attributes: true, 
+              attributeFilter: ['style', 'class'] 
             });
           }
       }, 200);
