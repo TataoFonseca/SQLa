@@ -16,7 +16,11 @@ import { FROM_SIMPLE_DEFINITION, FROM_SIMPLE_GENERATOR } from '../blocks/dml_Fro
 import { FROM_DEFINITION, FROM_GENERATOR } from '../blocks/dml_FromBlock.js';
 import { SELECT_DEFINITION, SELECT_GENERATOR, } from '../blocks/dml_SelectBlock.js';
 
-// BLOQUE DE MENÚ CONTEXTUAL PARA FROM (FromSimpleBlock y FromBlock)
+import { WHERE_DEFINITION, WHERE_GENERATOR } from '../blocks/dml_WhereBlock.js';
+//EXTENSIÓN DEL MENÚ CONTEXTUAL para WHERE
+import { registerWhereContextMenu } from '../blocks/extensions/whereContextMenu.js';
+
+//EXTENSIÓN DEL MENÚ CONTEXTUAL PARA FROM (FromSimpleBlock y FromBlock)
 import { registerFromContextMenu, registerFromJoinsContextMenu } from '../blocks/extensions/fromContextMenu.js';
 
 
@@ -102,6 +106,9 @@ export const AppController = {
     registerFromContextMenu();
     registerFromJoinsContextMenu();
 
+    //REGISTRO DEL MENÚ CONTEXTUAL PARA WHERE
+    registerWhereContextMenu();
+
     //REGISTRO DEL MENÚ CONTEXTUAL DE EXTENSIÓN PARA EXPRESIONES EN FUNCIONES DE AGREGACIÓN
     registerAggregateFunctionExpressionContextMenu();
 
@@ -120,6 +127,7 @@ export const AppController = {
       FROM_SIMPLE_DEFINITION,
       FROM_DEFINITION,
       SELECT_DEFINITION,
+      WHERE_DEFINITION,
 
       //DML: JOIN
       // JOIN_DEFINITION,
@@ -207,6 +215,7 @@ export const AppController = {
     };
 
     // === PASO 4: REGISTRO DE GENERADORES DML ===
+    // DML: SELECT
     javascriptGenerator.forBlock['sql_select'] = function (block) {
       return SELECT_GENERATOR(block, javascriptGenerator);
     };
@@ -215,15 +224,7 @@ export const AppController = {
       return EXPRESSION_GENERATOR(block, javascriptGenerator);
     };
 
-    javascriptGenerator.forBlock['sql_aggregate_expression'] = function (block) {
-      return AGGREGATE_EXPRESSION_GENERATOR(block, javascriptGenerator);
-    };
-
-    // javascriptGenerator.forBlock['sql_from'] = function (block) {
-    //   return FROM_GENERATOR(block, javascriptGenerator);
-    // };
-
-    //Registro de generadores de FROM (simple y con joins)
+    // DML: FROM (simple y con joins)
     javascriptGenerator.forBlock['sql_from_simple'] = function (block) {
       return FROM_SIMPLE_GENERATOR(block, javascriptGenerator);
     };
@@ -231,9 +232,21 @@ export const AppController = {
       return FROM_GENERATOR(block, javascriptGenerator);
     };
 
+    // DML: JOIN
     javascriptGenerator.forBlock['sql_join'] = function (block) {
       return JOIN_GENERATOR(block, javascriptGenerator);
     };
+
+    // DML: WHERE
+
+    javascriptGenerator.forBlock['sql_where'] = function (block) {
+      return WHERE_GENERATOR(block, javascriptGenerator);
+    };
+
+    javascriptGenerator.forBlock['sql_aggregate_expression'] = function (block) {
+      return AGGREGATE_EXPRESSION_GENERATOR(block, javascriptGenerator);
+    };
+
 
 
     // === PASO 5: GENERADORES DML: DISTINCT Y TOP

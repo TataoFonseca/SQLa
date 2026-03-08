@@ -75,8 +75,6 @@ export function registerHavingExpressionContextMenu() {
 
               // const blockXY = block.getRelativeToSurfaceXY();
               // compBlock.moveBy(blockXY.x - 20, blockXY.y - 10);
-
-              parentConnection.connect(compBlock.outputConnection);
             }
 
             compBlock.select();
