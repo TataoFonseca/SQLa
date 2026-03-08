@@ -25,9 +25,9 @@ function getComparisonWrapper(block) {
 
 export function registerHavingExpressionContextMenu() {
 
-  Blockly.Extensions.register('having_expression_context_menu', function() {
+  Blockly.Extensions.register('having_expression_context_menu', function () {
 
-    this.customContextMenu = function(options) {
+    this.customContextMenu = function (options) {
       const block = this;
       const workspace = block.workspace;
 
@@ -42,12 +42,12 @@ export function registerHavingExpressionContextMenu() {
       options.push({
         text: '─'.repeat(20),
         enabled: false,
-        callback: function() {}
+        callback: function () { }
       });
 
       // Helper para crear un wrapper de comparación
       function wrapWithComparison(compType) {
-        return function() {
+        return function () {
           Blockly.Events.setGroup(true);
           try {
             const compBlock = workspace.newBlock(compType);
@@ -73,8 +73,10 @@ export function registerHavingExpressionContextMenu() {
               // Conectar el comparison al HAVING
               parentConnection.connect(compBlock.outputConnection);
 
-              const blockXY = block.getRelativeToSurfaceXY();
-              compBlock.moveBy(blockXY.x - 20, blockXY.y - 10);
+              // const blockXY = block.getRelativeToSurfaceXY();
+              // compBlock.moveBy(blockXY.x - 20, blockXY.y - 10);
+
+              parentConnection.connect(compBlock.outputConnection);
             }
 
             compBlock.select();
@@ -108,12 +110,12 @@ export function registerHavingExpressionContextMenu() {
         options.push({
           text: `✓ Ya tiene ${comparisonWrapper.type.replace('sql_', '').toUpperCase()}`,
           enabled: false,
-          callback: function() {}
+          callback: function () { }
         });
         options.push({
           text: '❌ Remove comparison',
           enabled: true,
-          callback: function() {
+          callback: function () {
             Blockly.Events.setGroup(true);
             try {
               const wrapper = comparisonWrapper;

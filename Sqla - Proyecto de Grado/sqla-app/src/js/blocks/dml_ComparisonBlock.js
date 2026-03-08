@@ -9,7 +9,8 @@ export const COMPARISON_DEFINITION = {
     {
       "type": "input_value",
       "name": "LEFT",
-      "check": ["Expression", "Column", "Aggregate"]
+      // Añadido "ExpressionSingle" → permite tabla.columna escrito a mano en JOIN ON
+      "check": ["Expression", "ExpressionSingle","Column", "Aggregate"]
     },
     {
       "type": "field_dropdown",
@@ -27,7 +28,8 @@ export const COMPARISON_DEFINITION = {
     {
       "type": "input_value",
       "name": "RIGHT",
-      "check": ["Expression", "Column"]
+      // Añadido "ExpressionSingle" → permite tabla.columna escrito a mano en JOIN ON
+      "check": ["Expression", "ExpressionSingle", "Column"]
     }
   ],
   "inputsInline": true,
