@@ -65,24 +65,25 @@
     <category name="Consultar a Base de datos" colour="160">
       <block type="sql_select"></block>
       <block type="sql_expression"></block>
-      <block type="sql_from"></block>
+      <block type="sql_from_simple"></block>
+      <block type="sql_join"></block>
       <!-- GROUP BY pre-cargado con un GroupByColumn -->
-        <block type="sql_group_by">
-          <value name="COLUMNS">
-            <block type="sql_groupby_column">
-              <field name="COLUMN">column_name</field>
-            </block>
-          </value>
-        </block>
+      <block type="sql_group_by">
+        <value name="COLUMNS">
+          <block type="sql_groupby_column">
+            <field name="COLUMN">column_name</field>
+          </block>
+        </value>
+      </block>
 
-        <!-- GroupByColumn suelto por si el usuario quiere añadir más columnas manualmente -->
-        <block type="sql_groupby_column">
-          <field name="COLUMN">column_name</field>
-        </block>
+      <!-- GroupByColumn suelto por si el usuario quiere añadir más columnas manualmente -->
+      <block type="sql_groupby_column">
+        <field name="COLUMN">column_name</field>
+      </block>
 
       <!-- SUBCATEGORÍA PARA FUNCIONES DE AGREGACIÓN -->
       <category name="Funciones de Agregación" colour="120">
-        
+
         <!-- SUM con Expression que usa extensión de agregación -->
         <block type="sql_sum">
           <value name="EXPRESSION">
@@ -91,7 +92,7 @@
             </block>
           </value>
         </block>
-        
+
         <!-- AVG con Expression que usa extensión de agregación -->
         <block type="sql_avg">
           <value name="EXPRESSION">
@@ -100,7 +101,7 @@
             </block>
           </value>
         </block>
-        
+
         <!-- COUNT con Expression que usa extensión de agregación -->
         <block type="sql_count">
           <value name="EXPRESSION">
@@ -109,7 +110,7 @@
             </block>
           </value>
         </block>
-        
+
         <!-- MIN con Expression que usa extensión de agregación -->
         <block type="sql_min">
           <value name="EXPRESSION">
@@ -118,7 +119,7 @@
             </block>
           </value>
         </block>
-        
+
         <!-- MAX con Expression que usa extensión de agregación -->
         <block type="sql_max">
           <value name="EXPRESSION">
@@ -127,9 +128,9 @@
             </block>
           </value>
         </block>
-        
+
       </category>
-    <!-- SUBCATEGORÍA: CONDICIONES (WHERE / HAVING) -->
+      <!-- SUBCATEGORÍA: CONDICIONES (WHERE / HAVING) -->
 
       <!-- HAVING pre-cargado con ExpressionSingle -->
       <block type="sql_having">
