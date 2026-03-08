@@ -42,6 +42,26 @@ import {
 // EXTENSIÓN PARA EXPRESIONES EN FUNCIONES DE AGREGACIÓN
 import { registerAggregateFunctionExpressionContextMenu } from '../blocks/extensions/aggregateFunctionExpressionContextMenu.js';
 
+// BLOQUES DML: GROUP BY y su Bloque Columna GROUPBY COLUMN
+import { GROUPBY_DEFINITION, GROUPBY_GENERATOR, GROUPBY_ONCHANGE } from '../blocks/dml_GroupByBlock.js';
+import { GROUPBY_COLUMN_DEFINITION, GROUPBY_COLUMN_GENERATOR, GROUPBY_COLUMN_ONCHANGE } from '../blocks/dml_GroupByColumnBlock.js';
+
+// ESPACIO PARA BLOQUE HAVING
+import { HAVING_DEFINITION, HAVING_GENERATOR } from '../blocks/dml_HavingBlock.js';
+
+// EXTENSIÓN PARA EXPRESION EN HAVING
+import { registerHavingExpressionContextMenu } from '../blocks/extensions/havingExpressionContextMenu.js';
+
+// BLOQUES DML: EXPRESSION SINGLE — versión sin NEXT para lado derecho de comparaciones
+import { EXPRESSION_SINGLE_DEFINITION, EXPRESSION_SINGLE_GENERATOR } from '../blocks/dml_ExpressionSingleBlock.js';
+
+// BLOQUES DML: COMPARACIONES (output Condition — para WHERE/HAVING)
+import { COMPARISON_DEFINITION, COMPARISON_GENERATOR } from '../blocks/dml_ComparisonBlock.js';
+import { QUANTIFIED_COMPARISON_DEFINITION, QUANTIFIED_COMPARISON_GENERATOR } from '../blocks/dml_QuantifiedComparisonBlock.js';
+import { MEMBERSHIP_DEFINITION, MEMBERSHIP_GENERATOR } from '../blocks/dml_MembershipBlock.js';
+
+
+
 
 mermaid.initialize({
   startOnLoad: false,
@@ -69,6 +89,9 @@ export const AppController = {
 
     //REGISTRO DEL MENÚ CONTEXTUAL DE EXTENSIÓN PARA EXPRESIONES EN FUNCIONES DE AGREGACIÓN
     registerAggregateFunctionExpressionContextMenu();
+
+    //REGISTRO DEL MENÚ CONTEXTUAL DE EXTENSIÓN PARA EXPRESIONES EN HAVING
+    registerHavingExpressionContextMenu();
   
     // PASO 2: REGISTRO DE BLOQUES (JSON) ===
     //Bloques sin OnChange, se usa defineBlocksWithJsonArray
@@ -84,6 +107,17 @@ export const AppController = {
       // DML: DISTINCT Y TOP
       DISTINCT_DEFINITION, // Ahora es flag global, sin EXPRESSION input
       TOP_DEFINITION, // Ahora es flag global, sin EXPRESSION input
+
+      //DML: HAVING
+      HAVING_DEFINITION,
+
+      //DML: EXPRESSION SINGLE (sin onchange, sin NEXT) que se auto-inserta en LEFT y RIGHT en los bloques de comparación
+      EXPRESSION_SINGLE_DEFINITION,
+
+      // DML: COMPARACION, QUANTIFIED COMPARISON Y MEMBERSHIP
+      COMPARISON_DEFINITION,           
+      QUANTIFIED_COMPARISON_DEFINITION, 
+      MEMBERSHIP_DEFINITION,    
       
     ]);
 
@@ -124,6 +158,18 @@ export const AppController = {
       init: function() { this.jsonInit(MAX_DEFINITION); },
       onchange: AGGREGATE_FUNCTION_ONCHANGE
     };
+
+    // DML: GROUP BY
+    Blockly.Blocks['sql_group_by'] = {
+      init: function() { this.jsonInit(GROUPBY_DEFINITION); },
+      onchange: GROUPBY_ONCHANGE
+    };
+
+    Blockly.Blocks['sql_groupby_column'] = {
+      init: function() { this.jsonInit(GROUPBY_COLUMN_DEFINITION); },
+      onchange: GROUPBY_COLUMN_ONCHANGE
+    };
+
     
     // === PASO 3: REGISTRO DE GENERADORES DDL ===
     javascriptGenerator.forBlock['sql_create_table'] = function(block) {
@@ -150,8 +196,12 @@ export const AppController = {
     javascriptGenerator.forBlock['sql_from'] = function(block) {
       return FROM_GENERATOR(block, javascriptGenerator);
     };
+    //Generador para el bloque de expresión simple (sin NEXT) que se auto-inserta en HAVING y en el lado derecho de las comparaciones
+    javascriptGenerator.forBlock['sql_expression_single'] = function(block) {
+      return EXPRESSION_SINGLE_GENERATOR(block, javascriptGenerator);
+    };
     
-    // === PASO 5: GENERADORES PARA DISTINCT Y TOP
+    // === PASO 5: GENERADORES DML: DISTINCT Y TOP
     javascriptGenerator.forBlock['sql_distinct'] = function(block) {
       return DISTINCT_GENERATOR(block, javascriptGenerator);
     };
@@ -160,7 +210,7 @@ export const AppController = {
       return TOP_GENERATOR(block, javascriptGenerator);
     };
 
-    // === GENERADORES DE FUNCIONES DE AGREGACIÓN
+    // === PASO 6: GENERADORES DML FUNCIONES DE AGREGACIÓN
     javascriptGenerator.forBlock['sql_sum'] = function(block) {
       return SUM_GENERATOR(block, javascriptGenerator);
     };
@@ -181,7 +231,30 @@ export const AppController = {
       return MAX_GENERATOR(block, javascriptGenerator);
     };
 
+    // === PASO 7: GENERADORES DML GROUP BY
+    javascriptGenerator.forBlock['sql_group_by'] = function(block) {
+      return GROUPBY_GENERATOR(block, javascriptGenerator);
+    };
 
+    javascriptGenerator.forBlock['sql_groupby_column'] = function(block) {
+      return GROUPBY_COLUMN_GENERATOR(block, javascriptGenerator);
+    };
+
+    // PASO 8: GENERADORES DML HAVING
+    javascriptGenerator.forBlock['sql_having'] = function(block) {
+      return HAVING_GENERATOR(block, javascriptGenerator);
+    };
+
+        // === PASO 9: GENERADORES DML: COMPARACIONES ===
+    javascriptGenerator.forBlock['sql_comparison'] = function(block) {
+      return COMPARISON_GENERATOR(block, javascriptGenerator);
+    };
+    javascriptGenerator.forBlock['sql_quantified_comparison'] = function(block) {
+      return QUANTIFIED_COMPARISON_GENERATOR(block, javascriptGenerator);
+    };
+    javascriptGenerator.forBlock['sql_membership'] = function(block) {
+      return MEMBERSHIP_GENERATOR(block, javascriptGenerator);
+    };
 
     
     // === TEMA PERSONALIZADO PARA BLOCKLY ===
