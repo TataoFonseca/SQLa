@@ -51,7 +51,8 @@ export const SUM_DEFINITION = {
   "output": ["Aggregate", "Expression"],
   "colour": 120,
   "tooltip": "Suma de valores. Click derecho en la expresión interna para agregar DISTINCT.",
-  "helpUrl": ""
+  "helpUrl": "",
+  "extensions": ["having_expression_context_menu"]
 };
 
 export const SUM_GENERATOR = function(block, generator) {
@@ -83,7 +84,8 @@ export const AVG_DEFINITION = {
   "output": ["Aggregate", "Expression"],
   "colour": 120,
   "tooltip": "Promedio de valores. Click derecho en la expresión interna para agregar DISTINCT.",
-  "helpUrl": ""
+  "helpUrl": "",
+  "extensions": ["having_expression_context_menu"]
 };
 
 export const AVG_GENERATOR = function(block, generator) {
@@ -115,7 +117,8 @@ export const COUNT_DEFINITION = {
   "output": ["Aggregate", "Expression"],
   "colour": 120,
   "tooltip": "Conteo de filas. Click derecho en la expresión interna para agregar DISTINCT.",
-  "helpUrl": ""
+  "helpUrl": "",
+  "extensions": ["having_expression_context_menu"]
 };
 
 export const COUNT_GENERATOR = function(block, generator) {
@@ -147,7 +150,8 @@ export const MIN_DEFINITION = {
   "output": ["Aggregate", "Expression"],
   "colour": 120,
   "tooltip": "Valor mínimo.",
-  "helpUrl": ""
+  "helpUrl": "",
+  "extensions": ["having_expression_context_menu"]
 };
 
 export const MIN_GENERATOR = function(block, generator) {
@@ -179,7 +183,8 @@ export const MAX_DEFINITION = {
   "output": ["Aggregate", "Expression"],
   "colour": 120,
   "tooltip": "Valor máximo.",
-  "helpUrl": ""
+  "helpUrl": "",
+  "extensions": ["having_expression_context_menu"]
 };
 
 export const MAX_GENERATOR = function(block, generator) {
