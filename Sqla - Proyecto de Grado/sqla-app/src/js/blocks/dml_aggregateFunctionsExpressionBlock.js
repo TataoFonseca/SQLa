@@ -1,5 +1,5 @@
-// sqla-app/src/js/blocks/dml_AggregateExpressionBlock.js
-// Expression específica para usar dentro de funciones de agregación
+// sqla-app/src/js/blocks/dml_aggregateFunctionsExpressionBlock.js
+// Expression de Columna específica para usar dentro de funciones de agregación
 // Usa la extensión aggregate_expression_context_menu (solo DISTINCT, no TOP)
 
 export const AGGREGATE_EXPRESSION_DEFINITION = {
@@ -10,8 +10,9 @@ export const AGGREGATE_EXPRESSION_DEFINITION = {
       "type": "field_input",
       "name": "COLUMN",
       "text": "columna"
-    }
+    },
   ],
+  "inputsInline": true,
   "output": ["Expression", "Column"],
   "colour": 160,
   "tooltip": "Columna dentro de función de agregación. Click derecho para agregar DISTINCT.",

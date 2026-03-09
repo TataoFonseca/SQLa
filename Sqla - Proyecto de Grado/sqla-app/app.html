@@ -62,14 +62,33 @@
       <block type="sql_create_table"></block>
       <block type="sql_column_definition"></block>
     </category>
-    <category name="Sentencias DML" colour="160">
+    <category name="Consultar a Base de datos" colour="160">
+      <label text="— SELECT —" web-class="toolbox-label"></label>
       <block type="sql_select"></block>
       <block type="sql_expression"></block>
-      <block type="sql_from"></block>
+      <label text="— FROM —" web-class="toolbox-label"></label>
+      <block type="sql_from_simple"></block>
+      <block type="sql_join"></block>
+      <label text="— WHERE —" web-class="toolbox-label"></label>
+      <block type="sql_where"></block>
+      <label text="— GROUP BY —" web-class="toolbox-label"></label>
+      <!-- GROUP BY pre-cargado con un GroupByColumn -->
+      <block type="sql_group_by">
+        <value name="COLUMNS">
+          <block type="sql_groupby_column">
+            <field name="COLUMN">column_name</field>
+          </block>
+        </value>
+      </block>
 
-            <!-- ⭐ SUBCATEGORÍA PARA FUNCIONES DE AGREGACIÓN -->
+      <!-- GroupByColumn suelto por si el usuario quiere añadir más columnas manualmente -->
+      <block type="sql_groupby_column">
+        <field name="COLUMN">column_name</field>
+      </block>
+
+      <!-- SUBCATEGORÍA PARA FUNCIONES DE AGREGACIÓN -->
       <category name="Funciones de Agregación" colour="120">
-        
+
         <!-- SUM con Expression que usa extensión de agregación -->
         <block type="sql_sum">
           <value name="EXPRESSION">
@@ -78,7 +97,7 @@
             </block>
           </value>
         </block>
-        
+
         <!-- AVG con Expression que usa extensión de agregación -->
         <block type="sql_avg">
           <value name="EXPRESSION">
@@ -87,7 +106,7 @@
             </block>
           </value>
         </block>
-        
+
         <!-- COUNT con Expression que usa extensión de agregación -->
         <block type="sql_count">
           <value name="EXPRESSION">
@@ -96,7 +115,7 @@
             </block>
           </value>
         </block>
-        
+
         <!-- MIN con Expression que usa extensión de agregación -->
         <block type="sql_min">
           <value name="EXPRESSION">
@@ -105,7 +124,7 @@
             </block>
           </value>
         </block>
-        
+
         <!-- MAX con Expression que usa extensión de agregación -->
         <block type="sql_max">
           <value name="EXPRESSION">
@@ -114,8 +133,28 @@
             </block>
           </value>
         </block>
-        
+
       </category>
+      <!-- SUBCATEGORÍA: CONDICIONES (WHERE / HAVING) -->
+
+      <!-- HAVING pre-cargado con ExpressionSingle -->
+      <label text="— HAVING —" web-class="toolbox-label"></label>
+      <block type="sql_having">
+        <value name="EXPRESSION">
+          <block type="sql_expression_single">
+            <field name="COLUMN">columna</field>
+          </block>
+        </value>
+      </block>
+
+      <!-- ExpressionSingle suelto — para conectar manualmente al HAVING -->
+      <block type="sql_expression_single">
+        <field name="COLUMN">columna</field>
+      </block>
+
+      <!-- Nota: Comparison/QuantifiedComparison/Membership se agregan 
+          desde click derecho sobre el bloque dentro de HAVING -->
+
 
     </category>
     <category name="Logic" colour="%{BKY_LOGIC_HUE}">
@@ -131,6 +170,7 @@
       <block type="math_arithmetic"></block>
     </category>
   </xml>
+
 
   <div id="footer-container"></div>
 

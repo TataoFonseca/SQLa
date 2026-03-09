@@ -4,22 +4,34 @@ import * as Blockly from 'blockly';
 import { javascriptGenerator } from 'blockly/javascript';
 import mermaid from 'mermaid';
 
+// ===Importe de Bloques===
+
 // BLOQUES DDL
 import { CREATE_TABLE_DEFINITION, CREATE_TABLE_GENERATOR } from '../blocks/ddl_CreateTableBlock.js';
 import { COLUMN_DEFINITION, COLUMN_GENERATOR } from '../blocks/ddl_ColumnDefinitionBlock.js';
 
-// BLOQUES DML, INCLUYENDO LOS MEJORADOS CON DISTINCT Y TOP
-import { FROM_DEFINITION, FROM_GENERATOR } from '../blocks/dml_FromBlock.js';
-
 // BLOQUES DML
-import { 
-  SELECT_DEFINITION, 
-  SELECT_GENERATOR, 
-} from '../blocks/dml_SelectBlock.js'; 
+// (Agregado) FROM simple sin soporte de JOINs
+import { FROM_SIMPLE_DEFINITION, FROM_SIMPLE_GENERATOR } from '../blocks/dml_FromSimpleBlock.js';
+import { FROM_DEFINITION, FROM_GENERATOR } from '../blocks/dml_FromBlock.js';
+import { SELECT_DEFINITION, SELECT_GENERATOR, } from '../blocks/dml_SelectBlock.js';
+
+import { WHERE_DEFINITION, WHERE_GENERATOR } from '../blocks/dml_WhereBlock.js';
+//EXTENSIÓN DEL MENÚ CONTEXTUAL para WHERE
+import { registerWhereContextMenu } from '../blocks/extensions/whereContextMenu.js';
+
+//EXTENSIÓN DEL MENÚ CONTEXTUAL PARA FROM (FromSimpleBlock y FromBlock)
+import { registerFromContextMenu, registerFromJoinsContextMenu } from '../blocks/extensions/fromContextMenu.js';
+
+
+//BLOQUES DML JOIN
+import { JOIN_DEFINITION, JOIN_GENERATOR, JOIN_ONCHANGE } from '../blocks/dml_JoinBlock.js';
 
 // BLOQUE DE EXPRESSION CON MENÚ CONTEXTUAL para BLOQUES DISTINCT Y TOP
-import { 
-  EXPRESSION_DEFINITION, EXPRESSION_GENERATOR } from '../blocks/dml_ExpressionBlock.js'; 
+import {
+  EXPRESSION_DEFINITION, EXPRESSION_GENERATOR,
+  EXPRESSION_ONCHANGE // Onchange para manejar la coma dinámica en el bloque de expresión
+} from '../blocks/dml_ExpressionBlock.js';
 
 // BLOQUES DML: DISTINCT Y TOP
 import { DISTINCT_DEFINITION, DISTINCT_GENERATOR } from '../blocks/dml_DistinctBlock.js';
@@ -29,20 +41,41 @@ import { TOP_DEFINITION, TOP_GENERATOR } from '../blocks/dml_TopBlock.js';
 import { registerExpressionContextMenu } from '../blocks/extensions/expressionContextMenu.js';
 
 
-// BLOQUE DE EXPRESSION PROPIA DE FUNCIONES DE AGREGACIÓN
-import { AGGREGATE_EXPRESSION_DEFINITION, AGGREGATE_EXPRESSION_GENERATOR } from '../blocks/dml_aggregateFunctionsExpressionBlock.js'; 
+// BLOQUE DE EXPRESSION dentro de funciones de agregación (sin NEXT, sin onchange)
+import { AGGREGATE_EXPRESSION_DEFINITION, AGGREGATE_EXPRESSION_GENERATOR, } from '../blocks/dml_aggregateFunctionsExpressionBlock.js';
 
 // BLOQUES DE FUNCIONES DE AGREGACIÓN
-import { 
+import {
   SUM_DEFINITION, SUM_GENERATOR,
   AVG_DEFINITION, AVG_GENERATOR,
   COUNT_DEFINITION, COUNT_GENERATOR,
   MIN_DEFINITION, MIN_GENERATOR,
-  MAX_DEFINITION, MAX_GENERATOR
+  MAX_DEFINITION, MAX_GENERATOR,
+  AGGREGATE_FUNCTION_ONCHANGE // Onchange compartido para todos los bloques de funciones de agregación para añadir soporte de coma dinámica
 } from '../blocks/dml_aggregateFunctionsBlock.js';
 
 // EXTENSIÓN PARA EXPRESIONES EN FUNCIONES DE AGREGACIÓN
 import { registerAggregateFunctionExpressionContextMenu } from '../blocks/extensions/aggregateFunctionExpressionContextMenu.js';
+
+// BLOQUES DML: GROUP BY y su Bloque Columna GROUPBY COLUMN
+import { GROUPBY_DEFINITION, GROUPBY_GENERATOR, GROUPBY_ONCHANGE } from '../blocks/dml_GroupByBlock.js';
+import { GROUPBY_COLUMN_DEFINITION, GROUPBY_COLUMN_GENERATOR, GROUPBY_COLUMN_ONCHANGE } from '../blocks/dml_GroupByColumnBlock.js';
+
+// ESPACIO PARA BLOQUE HAVING
+import { HAVING_DEFINITION, HAVING_GENERATOR } from '../blocks/dml_HavingBlock.js';
+
+// EXTENSIÓN PARA EXPRESION EN HAVING
+import { registerHavingExpressionContextMenu } from '../blocks/extensions/havingExpressionContextMenu.js';
+
+// BLOQUES DML: EXPRESSION SINGLE — versión sin NEXT para lado derecho de comparaciones
+import { EXPRESSION_SINGLE_DEFINITION, EXPRESSION_SINGLE_GENERATOR } from '../blocks/dml_ExpressionSingleBlock.js';
+
+// BLOQUES DML: COMPARACIONES (output Condition — para WHERE/HAVING)
+import { COMPARISON_DEFINITION, COMPARISON_GENERATOR } from '../blocks/dml_ComparisonBlock.js';
+import { QUANTIFIED_COMPARISON_DEFINITION, QUANTIFIED_COMPARISON_GENERATOR } from '../blocks/dml_QuantifiedComparisonBlock.js';
+import { MEMBERSHIP_DEFINITION, MEMBERSHIP_GENERATOR } from '../blocks/dml_MembershipBlock.js';
+
+
 
 
 mermaid.initialize({
@@ -53,7 +86,7 @@ mermaid.initialize({
 
 export const AppController = {
   workspace: null,
-  
+
   init: function () {
 
     // === DEFINIR ORDEN DE OPERACIONES PARA EL GENERADOR ===
@@ -65,97 +98,218 @@ export const AppController = {
     javascriptGenerator.ORDER_ADDITION = 4;
     javascriptGenerator.ORDER_SUBTRACTION = 4;
     javascriptGenerator.ORDER_NONE = 99;
-    
+
     //REGISTRO DEL MENÚ CONTEXTUAL PARA EL BLOQUE DE EXPRESIÓN (ANTES DE LOS BLOQUES)
     registerExpressionContextMenu();
 
+    //REGISTRO DEL MENÚ CONTEXTUAL PARA FROM (FromSimpleBlock y FromBlock)
+    registerFromContextMenu();
+    registerFromJoinsContextMenu();
+
+    //REGISTRO DEL MENÚ CONTEXTUAL PARA WHERE
+    registerWhereContextMenu();
+
     //REGISTRO DEL MENÚ CONTEXTUAL DE EXTENSIÓN PARA EXPRESIONES EN FUNCIONES DE AGREGACIÓN
     registerAggregateFunctionExpressionContextMenu();
-  
+
+    //REGISTRO DEL MENÚ CONTEXTUAL DE EXTENSIÓN PARA EXPRESIONES EN HAVING
+    registerHavingExpressionContextMenu();
+
     // PASO 2: REGISTRO DE BLOQUES (JSON) ===
+    //Bloques sin OnChange, se usa defineBlocksWithJsonArray
     Blockly.defineBlocksWithJsonArray([
       // DDL
       CREATE_TABLE_DEFINITION,
       COLUMN_DEFINITION,
-      
+
       // DML
+      //Agregado FROM simple sin soporte de JOINs
+      FROM_SIMPLE_DEFINITION,
       FROM_DEFINITION,
       SELECT_DEFINITION,
-      EXPRESSION_DEFINITION,
-      AGGREGATE_EXPRESSION_DEFINITION,  // Bloque de expresión para funciones de agregación
-      
-      // DML: DISTINCT Y TOP
-      DISTINCT_DEFINITION,
-      TOP_DEFINITION,
+      WHERE_DEFINITION,
 
-      // DML: FUNCIONES DE AGREGACIÓN
-      SUM_DEFINITION,
-      AVG_DEFINITION,
-      COUNT_DEFINITION,
-      MIN_DEFINITION,
-      MAX_DEFINITION
-      
+      //DML: JOIN
+      // JOIN_DEFINITION,
+
+      // DML: DISTINCT Y TOP
+      DISTINCT_DEFINITION, // Ahora es flag global, sin EXPRESSION input
+      TOP_DEFINITION, // Ahora es flag global, sin EXPRESSION input
+
+      //DML: HAVING
+      HAVING_DEFINITION,
+
+      //DML: EXPRESSION SINGLE (sin onchange, sin NEXT) que se auto-inserta en LEFT y RIGHT en los bloques de comparación
+      EXPRESSION_SINGLE_DEFINITION,
+
+      // DML: COMPARACION, QUANTIFIED COMPARISON Y MEMBERSHIP
+      COMPARISON_DEFINITION,
+      QUANTIFIED_COMPARISON_DEFINITION,
+      MEMBERSHIP_DEFINITION,
+
     ]);
-    
+
+    // Bloques con onchange (coma dinámica) → registro manual con Blockly.Blocks
+    //DML
+    Blockly.Blocks['sql_expression'] = {
+      init: function () { this.jsonInit(EXPRESSION_DEFINITION); },
+      onchange: EXPRESSION_ONCHANGE
+    };
+
+    Blockly.Blocks['sql_aggregate_expression'] = {
+      init: function () { this.jsonInit(AGGREGATE_EXPRESSION_DEFINITION); }, // Bloque de expresión para funciones de agregación
+    };
+
+    //DML: JOIN (con onchange)
+    Blockly.Blocks['sql_join'] = {
+      init: function () { this.jsonInit(JOIN_DEFINITION); },
+      onchange: JOIN_ONCHANGE
+    };
+
+    //DML: FUNCIONES DE AGREGACIÓN (con onchange)
+
+    Blockly.Blocks['sql_sum'] = {
+      init: function () { this.jsonInit(SUM_DEFINITION); },
+      onchange: AGGREGATE_FUNCTION_ONCHANGE
+    };
+
+    Blockly.Blocks['sql_avg'] = {
+      init: function () { this.jsonInit(AVG_DEFINITION); },
+      onchange: AGGREGATE_FUNCTION_ONCHANGE
+    };
+
+    Blockly.Blocks['sql_count'] = {
+      init: function () { this.jsonInit(COUNT_DEFINITION); },
+      onchange: AGGREGATE_FUNCTION_ONCHANGE
+    };
+
+    Blockly.Blocks['sql_min'] = {
+      init: function () { this.jsonInit(MIN_DEFINITION); },
+      onchange: AGGREGATE_FUNCTION_ONCHANGE
+    };
+
+    Blockly.Blocks['sql_max'] = {
+      init: function () { this.jsonInit(MAX_DEFINITION); },
+      onchange: AGGREGATE_FUNCTION_ONCHANGE
+    };
+
+    // DML: GROUP BY
+    Blockly.Blocks['sql_group_by'] = {
+      init: function () { this.jsonInit(GROUPBY_DEFINITION); },
+      onchange: GROUPBY_ONCHANGE
+    };
+
+    Blockly.Blocks['sql_groupby_column'] = {
+      init: function () { this.jsonInit(GROUPBY_COLUMN_DEFINITION); },
+      onchange: GROUPBY_COLUMN_ONCHANGE
+    };
+
+
     // === PASO 3: REGISTRO DE GENERADORES DDL ===
-    javascriptGenerator.forBlock['sql_create_table'] = function(block) {
+    javascriptGenerator.forBlock['sql_create_table'] = function (block) {
       return CREATE_TABLE_GENERATOR(block, javascriptGenerator);
     };
 
-    javascriptGenerator.forBlock['sql_column_definition'] = function(block) {
+    javascriptGenerator.forBlock['sql_column_definition'] = function (block) {
       return COLUMN_GENERATOR(block, javascriptGenerator);
     };
 
-    // === PASO 4: REGISTRA LOS GENERADORES DML ===
-    javascriptGenerator.forBlock['sql_select'] = function(block) {
+    // === PASO 4: REGISTRO DE GENERADORES DML ===
+    // DML: SELECT
+    javascriptGenerator.forBlock['sql_select'] = function (block) {
       return SELECT_GENERATOR(block, javascriptGenerator);
     };
 
-    javascriptGenerator.forBlock['sql_expression'] = function(block) {
+    javascriptGenerator.forBlock['sql_expression'] = function (block) {
       return EXPRESSION_GENERATOR(block, javascriptGenerator);
     };
 
-    javascriptGenerator.forBlock['sql_aggregate_expression'] = function(block) {
+    // DML: FROM (simple y con joins)
+    javascriptGenerator.forBlock['sql_from_simple'] = function (block) {
+      return FROM_SIMPLE_GENERATOR(block, javascriptGenerator);
+    };
+    javascriptGenerator.forBlock['sql_from'] = function (block) {
+      return FROM_GENERATOR(block, javascriptGenerator);
+    };
+
+    // DML: JOIN
+    javascriptGenerator.forBlock['sql_join'] = function (block) {
+      return JOIN_GENERATOR(block, javascriptGenerator);
+    };
+
+    // DML: WHERE
+
+    javascriptGenerator.forBlock['sql_where'] = function (block) {
+      return WHERE_GENERATOR(block, javascriptGenerator);
+    };
+
+    javascriptGenerator.forBlock['sql_aggregate_expression'] = function (block) {
       return AGGREGATE_EXPRESSION_GENERATOR(block, javascriptGenerator);
     };
 
-    javascriptGenerator.forBlock['sql_from'] = function(block) {
-      return FROM_GENERATOR(block, javascriptGenerator);
-    };
-    
-    // === PASO 5: GENERADORES PARA DISTINCT Y TOP
-    javascriptGenerator.forBlock['sql_distinct'] = function(block) {
+
+
+    // === PASO 5: GENERADORES DML: DISTINCT Y TOP
+    javascriptGenerator.forBlock['sql_distinct'] = function (block) {
       return DISTINCT_GENERATOR(block, javascriptGenerator);
     };
-    
-    javascriptGenerator.forBlock['sql_top'] = function(block) {
+
+    javascriptGenerator.forBlock['sql_top'] = function (block) {
       return TOP_GENERATOR(block, javascriptGenerator);
     };
 
-    // === GENERADORES DE FUNCIONES DE AGREGACIÓN
-    javascriptGenerator.forBlock['sql_sum'] = function(block) {
+    // === PASO 6: GENERADORES DML FUNCIONES DE AGREGACIÓN
+    javascriptGenerator.forBlock['sql_sum'] = function (block) {
       return SUM_GENERATOR(block, javascriptGenerator);
     };
 
-    javascriptGenerator.forBlock['sql_avg'] = function(block) {
+    javascriptGenerator.forBlock['sql_avg'] = function (block) {
       return AVG_GENERATOR(block, javascriptGenerator);
     };
-    
-    javascriptGenerator.forBlock['sql_count'] = function(block) {
+
+    javascriptGenerator.forBlock['sql_count'] = function (block) {
       return COUNT_GENERATOR(block, javascriptGenerator);
     };
-    
-    javascriptGenerator.forBlock['sql_min'] = function(block) {
+
+    javascriptGenerator.forBlock['sql_min'] = function (block) {
       return MIN_GENERATOR(block, javascriptGenerator);
     };
-    
-    javascriptGenerator.forBlock['sql_max'] = function(block) {
+
+    javascriptGenerator.forBlock['sql_max'] = function (block) {
       return MAX_GENERATOR(block, javascriptGenerator);
     };
 
+    // === PASO 7: GENERADORES DML GROUP BY
+    javascriptGenerator.forBlock['sql_group_by'] = function (block) {
+      return GROUPBY_GENERATOR(block, javascriptGenerator);
+    };
+
+    javascriptGenerator.forBlock['sql_groupby_column'] = function (block) {
+      return GROUPBY_COLUMN_GENERATOR(block, javascriptGenerator);
+    };
+
+    // PASO 8: GENERADORES DML HAVING
+    javascriptGenerator.forBlock['sql_having'] = function (block) {
+      return HAVING_GENERATOR(block, javascriptGenerator);
+    };
+
+    //Generador para el bloque de expresión simple (sin NEXT) que se auto-inserta en HAVING y en el lado derecho de las comparaciones
+    javascriptGenerator.forBlock['sql_expression_single'] = function (block) {
+      return EXPRESSION_SINGLE_GENERATOR(block, javascriptGenerator);
+    };
+
+    // === PASO 9: GENERADORES DML: COMPARACIONES ===
+    javascriptGenerator.forBlock['sql_comparison'] = function (block) {
+      return COMPARISON_GENERATOR(block, javascriptGenerator);
+    };
+    javascriptGenerator.forBlock['sql_quantified_comparison'] = function (block) {
+      return QUANTIFIED_COMPARISON_GENERATOR(block, javascriptGenerator);
+    };
+    javascriptGenerator.forBlock['sql_membership'] = function (block) {
+      return MEMBERSHIP_GENERATOR(block, javascriptGenerator);
+    };
 
 
-    
     // === TEMA PERSONALIZADO PARA BLOCKLY ===
     const darkGlassTheme = Blockly.Theme.defineTheme('darkGlass', {
       'base': Blockly.Themes.Classic,
@@ -169,7 +323,7 @@ export const AppController = {
         'insertionMarkerColour': '#ffffff'
       }
     });
-    
+
     // === Referencias del DOM ===
     const blocklyDiv = document.getElementById('blocklyDiv');
     const showMermaidBtn = document.getElementById('showMermaidBtn');
@@ -180,35 +334,89 @@ export const AppController = {
     const sqlDiv = document.getElementById('sqlOutput');
     const openBdMenu = document.getElementById('openBdMenu');
     const exportBdMenu = document.getElementById('exportBdMenu');
-    
+
     // === Inicializar Blockly ===
     this.workspace = Blockly.inject(blocklyDiv, {
       toolbox: document.getElementById('toolbox'),
       theme: darkGlassTheme,
-      renderer: 'geras'
+      renderer: 'geras',
+      move: { //añadido, opción de scroll en menus
+        scrollbars: true,
+        drag: true,
+        wheel: true
+      }
     });
-    
+
+    // añadido, deshabilidar autoClose del flyout para que no se cierre al arrastrar bloques
+    if (this.workspace.getFlyout()) {
+      this.workspace.getFlyout().autoClose = false;
+
+      // Fix doble click: escuchar clicks en el toolbox via DOM
+      setTimeout(() => {
+
+        const toolbox = this.workspace.getToolbox();
+        // const toolboxDiv = document.querySelector('.blocklyToolbox');
+
+        // toolboxDiv.addEventListener('click', () => {
+        //   const selected = toolbox.getSelectedItem();
+        //   console.log('selected:', selected);
+        //   console.log('selected proto methods:', selected ? Object.getOwnPropertyNames(Object.getPrototypeOf(selected)) : 'null');
+        //   console.log('toolbox proto methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(toolbox)));
+        // });
+
+        const dmlItem = toolbox.getToolboxItems().find(item =>
+          item.getName?.() === 'Sentencias DML'
+        );
+
+        // console.log('dmlItem:', dmlItem);
+        // console.log('dmlItem div:', dmlItem?.getDiv?.());
+
+        const dmlDiv = dmlItem?.getDiv?.();
+        if (dmlDiv) {
+          let wasVisible = false;
+
+          const observer = new MutationObserver(() => {
+            const children = dmlItem.getChildToolboxItems();
+            const isVisible = children.some(child => child.isVisible?.());
+
+            // Si pasó de visible a no visible, re-seleccionar DML
+            if (wasVisible && !isVisible) {
+              setTimeout(() => toolbox.setSelectedItem(dmlItem), 50);
+            }
+
+            wasVisible = isVisible;
+          });
+
+          observer.observe(dmlDiv, {
+            subtree: true,
+            attributes: true,
+            attributeFilter: ['style', 'class']
+          });
+        }
+      }, 200);
+    }
+
     // === EFECTO CRISTAL AL FONDO INTERNO ===
     setTimeout(() => {
       const blocklyBackground = document.querySelector('.blocklyMainBackground');
       if (blocklyBackground) {
         blocklyBackground.setAttribute('fill', 'transparent');
       }
-      
+
       const gridPattern = document.querySelector('.blocklyGridPattern');
       if (gridPattern) {
         gridPattern.setAttribute('stroke', 'rgba(255, 255, 255, 0.1)');
       }
     }, 100);
-    
+
     Blockly.svgResize(this.workspace);
     window.addEventListener('resize', () => Blockly.svgResize(this.workspace));
-    
+
     // === LISTENER PARA GENERAR CÓDIGO SQL ===
     this.workspace.addChangeListener(() => {
       const code = javascriptGenerator.workspaceToCode(this.workspace);
       console.log('SQL generado:', code);
-      
+
       // Actualiza el div de SQL con el código generado
       if (sqlDiv && code.trim()) {
         sqlDiv.innerHTML = `
@@ -220,49 +428,49 @@ export const AppController = {
         this.showSQLExample();
       }
     });
-    
+
     // === EVENTOS DE INTERFAZ ===
     showMermaidBtn.addEventListener('click', () => {
       mermaidDiv.style.display =
         mermaidDiv.style.display === 'none' ? 'block' : 'none';
       this.resizeBlockly();
     });
-    
+
     showOutputBtn.addEventListener('click', () => {
       sqlDiv.style.display =
         sqlDiv.style.display === 'none' ? 'block' : 'none';
       this.resizeBlockly();
     });
-    
+
     showOpenBdBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       openBdMenu.classList.toggle('active');
       exportBdMenu.classList.remove('active');
     });
-    
+
     showExportBdBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       exportBdMenu.classList.toggle('active');
       openBdMenu.classList.remove('active');
     });
-    
+
     document.addEventListener('click', () => {
       openBdMenu.classList.remove('active');
       exportBdMenu.classList.remove('active');
     });
-    
+
     // === Mostrar ejemplos iniciales ===
     console.log('Blockly inicializado con bloques SQL + DISTINCT/TOP', this.workspace);
     this.showMermaidExample("Esquema_Estudiantes");
     this.showSQLExample();
   },
-  
+
   resizeBlockly: function () {
     if (this.workspace) {
       Blockly.svgResize(this.workspace);
     }
   },
-  
+
   showMermaidExample: async function (schemaName) {
     const mermaidDiv = document.getElementById('mermaidDiv');
     const diagram = `
@@ -277,14 +485,14 @@ erDiagram
   }
   STUDENTS ||--|| COURSES : takes
     `;
-    
+
     mermaidDiv.innerHTML = `
       <h2>Modelo Entidad-Relación — Esquema: 
         <span style="color:#00ff99">${schemaName}</span>
       </h2>
       <div id="mermaidDiagram"></div>
     `;
-    
+
     try {
       const { svg } = await mermaid.render('er-diagram', diagram);
       document.getElementById('mermaidDiagram').innerHTML = svg;
@@ -293,7 +501,7 @@ erDiagram
       mermaidDiv.innerHTML += `<p>Error al renderizar diagrama</p>`;
     }
   },
-  
+
   showSQLExample: function () {
     const sqlDiv = document.getElementById('sqlOutput');
     sqlDiv.innerHTML = `
