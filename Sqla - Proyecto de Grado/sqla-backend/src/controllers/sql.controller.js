@@ -34,7 +34,7 @@ export async function analyzeSQL(req, res) {
             return res.status(400).json({ ok: false, error: validation.message });
         }
 
-        // 🔹 Ejecutar en el schema correcto
+        //  Ejecutar en el schema correcto
         const executionResult = await executeSQL(sql, session.schema_name);
 
         // Intentar guardar la consulta, pero no fallar si no se puede

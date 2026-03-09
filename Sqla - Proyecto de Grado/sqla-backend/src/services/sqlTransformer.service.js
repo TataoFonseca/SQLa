@@ -5,6 +5,61 @@ const { Parser } = pkg;
 const parser = new Parser();
 
 /**
+ * Genera un nombre único para la tabla basado en el nombre lógico y el schema
+ */
+function generateUniqueTableName(logicalName, schemaName) {
+    const shortSessionId = schemaName.replace('session_', '').substring(0, 8);
+    return `${logicalName}_${shortSessionId}`;
+}
+
+/**
+ * Procesa recursivamente cualquier referencia a tablas en el AST
+ */
+function processTableReference(tableRef, schemaName, context) {
+    if (!tableRef) return;
+
+    // Si es un array, procesar cada elemento
+    if (Array.isArray(tableRef)) {
+        tableRef.forEach(ref => processTableReference(ref, schemaName, context));
+        return;
+    }
+
+    // Si es un objeto con propiedad table
+    if (typeof tableRef === 'object') {
+        // Si tiene db (schema) y es del sistema, no modificar
+        const systemSchemas = ['INFORMATION_SCHEMA', 'sys', 'dbo'];
+        if (tableRef.db && systemSchemas.includes(tableRef.db)) {
+            console.log(`⏭️ Saltando schema del sistema en ${context}:`, tableRef.db);
+            return;
+        }
+
+        // Procesar el nombre de la tabla si es string
+        if (typeof tableRef.table === 'string' && !tableRef.table.includes('_') && !systemSchemas.includes(tableRef.table)) {
+            // Verificar si ya tiene el formato único (contiene _ + sessionId)
+            const shortSessionId = schemaName.replace('session_', '').substring(0, 8);
+            const expectedSuffix = `_${shortSessionId}`;
+
+            if (!tableRef.table.endsWith(expectedSuffix)) {
+                const originalName = tableRef.table;
+                tableRef.table = generateUniqueTableName(originalName, schemaName);
+                console.log(` Nombre único generado en ${context}: ${originalName} → ${tableRef.table}`);
+            }
+        }
+
+        // Inyectar schema si no tiene
+        if (!tableRef.db) {
+            tableRef.db = schemaName;
+            console.log(` Schema inyectado en ${context}:`, schemaName);
+        }
+
+        // Procesar recursivamente si hay más niveles
+        if (tableRef.table && typeof tableRef.table === 'object') {
+            processTableReference(tableRef.table, schemaName, context);
+        }
+    }
+}
+
+/**
  * Transforma el AST para inyectar el schema en todas las tablas
  */
 export function injectSchemaInAST(ast, schemaName) {
@@ -13,115 +68,110 @@ export function injectSchemaInAST(ast, schemaName) {
     function processNode(node) {
         if (!node) return;
 
+        // ==========================================
         // CREATE TABLE
+        // ==========================================
         if (node.type === 'create' && node.keyword === 'table') {
+            // Procesar la tabla principal
             if (node.table && Array.isArray(node.table)) {
                 node.table.forEach(tableItem => {
                     if (tableItem.table && !tableItem.db) {
+                        // Generar nombre único
+                        const userTableName = tableItem.table;
+                        const uniqueTableName = generateUniqueTableName(userTableName, schemaName);
+
+                        // Guardar en el AST
+                        tableItem.table = uniqueTableName;
                         tableItem.db = schemaName;
+
+                        console.log(`✅ Tabla renombrada en CREATE: ${userTableName} → ${uniqueTableName}`);
                     }
                 });
             }
-        }
 
-        // INSERT INTO
-        if (node.type === 'insert') {
-            if (node.table && Array.isArray(node.table)) {
-                node.table.forEach(tableItem => {
-                    if (tableItem.table && !tableItem.db) {
-                        tableItem.db = schemaName;
-                        console.log('✅ Schema inyectado en INSERT:', tableItem.db);
-                    }
-                });
-            }
-        }
-        // UPDATE 
-        if (node.type === 'update') {
-            if (node.table && Array.isArray(node.table)) {
-                node.table.forEach(tableItem => {
-                    if (typeof tableItem === 'object') {
-                        if (typeof tableItem.table === 'string') {
-                            // Caso simple: table es string
-                            const tableName = tableItem.table;
-                            tableItem.db = schemaName;      // El schema va en db
-                            tableItem.table = tableName;    // El nombre de tabla en table
-                            console.log('✅ Schema inyectado en UPDATE (string):', schemaName);
-                        }
-                        else if (typeof tableItem.table === 'object') {
-                            // Si ya es objeto, pero tiene estructura anidada
-                            if (tableItem.table.table) {
-                                // Estructura actual: { table: { db:..., table:... } }
-                                // Debe ser: { db:..., table:... }
-                                tableItem.db = tableItem.table.db || schemaName;
-                                tableItem.table = tableItem.table.table;
-                                console.log('✅ Schema inyectado en UPDATE (objeto aplanado):', tableItem.db);
-                            }
-                        }
-                    }
-                });
-            }
-        }
-        // SELECT (FROM clause) 
-        if (node.from) {
-            if (Array.isArray(node.from)) {
-                node.from.forEach(item => {
-                    // Lista de schemas del sistema que NO deben modificarse
-                    const systemSchemas = ['INFORMATION_SCHEMA', 'sys', 'dbo'];
-
-                    // Si ya tiene un db/schema explícito y está en la lista de systemSchemas, no lo modificamos
-                    if (item.db && systemSchemas.includes(item.db)) {
-                        console.log('⏭️ Saltando schema del sistema:', item.db);
-                        return; // Salir, no modificar
-                    }
-
-                    if (item.table) {
-                        if (typeof item.table === 'string') {
-                            // Caso simple: table es string
-                            const tableName = item.table;
-                            item.db = schemaName;      // El schema va en db
-                            item.table = tableName;    // El nombre de tabla en table
-                            console.log('✅ Schema inyectado en SELECT (string):', schemaName);
-                        }
-                        else if (typeof item.table === 'object') {
-                            // Si ya es objeto, pero tiene estructura anidada
-                            if (item.table.table) {
-                                item.db = item.table.db || schemaName;
-                                item.table = item.table.table;
-                                console.log('✅ Schema inyectado en SELECT (objeto):', item.db);
-                            }
+            // Procesar FOREIGN KEY dentro de CREATE TABLE
+            if (node.create_definitions && Array.isArray(node.create_definitions)) {
+                node.create_definitions.forEach(def => {
+                    if (def.resource === 'constraint' && def.constraint_type === 'FOREIGN KEY') {
+                        if (def.reference_definition && def.reference_definition.table) {
+                            def.reference_definition.table.forEach(refTable => {
+                                if (!refTable.db) {
+                                    // También renombrar la tabla referenciada
+                                    const userTableName = refTable.table;
+                                    const uniqueTableName = generateUniqueTableName(userTableName, schemaName);
+                                    refTable.table = uniqueTableName;
+                                    refTable.db = schemaName;
+                                    console.log(`✅ Tabla referenciada renombrada en CREATE: ${userTableName} → ${uniqueTableName}`);
+                                }
+                            });
                         }
                     }
                 });
             }
         }
 
-        // ALTER TABLE
+        // ==========================================
+        // ALTER TABLE (incluye ADD CONSTRAINT)
+        // ==========================================
         if (node.type === 'alter' && node.keyword === 'table') {
-            if (node.table && Array.isArray(node.table)) {
-                node.table.forEach(tableItem => {
-                    if (typeof tableItem === 'object') {
-                        if (typeof tableItem.table === 'string') {
-                            // Caso simple: table es string
-                            const tableName = tableItem.table;
-                            tableItem.db = schemaName;      // El schema va en db
-                            tableItem.table = tableName;    // El nombre de tabla en table
-                            console.log('✅ Schema inyectado en ALTER TABLE:', schemaName);
+            // Procesar la tabla principal del ALTER
+            if (node.table) {
+                processTableReference(node.table, schemaName, 'ALTER TABLE (principal)');
+            }
+
+            // Procesar expresiones dentro de ALTER
+            if (node.expr && Array.isArray(node.expr)) {
+                node.expr.forEach(expr => {
+                    // ADD CONSTRAINT
+                    if (expr.resource === 'constraint' || expr.action === 'add') {
+                        // FOREIGN KEY
+                        if (expr.create_definitions && expr.create_definitions.reference_definition) {
+                            const refDef = expr.create_definitions.reference_definition;
+                            if (refDef.table) {
+                                processTableReference(
+                                    refDef.table,
+                                    schemaName,
+                                    'FOREIGN KEY (ALTER TABLE)'
+                                );
+                            }
                         }
                     }
                 });
             }
         }
+
+        // ==========================================
+        // INSERT INTO
+        // ==========================================
+        if (node.type === 'insert') {
+            if (node.table) {
+                processTableReference(node.table, schemaName, 'INSERT');
+            }
+        }
+
+        // ==========================================
+        // UPDATE
+        // ==========================================
+        if (node.type === 'update') {
+            if (node.table) {
+                processTableReference(node.table, schemaName, 'UPDATE');
+            }
+        }
+
+        // ==========================================
         // DELETE
+        // ==========================================
         if (node.type === 'delete') {
             if (node.from) {
-                if (typeof node.from === 'object' && node.from.table) {
-                    if (typeof node.from.table === 'object' && !node.from.table.db) {
-                        node.from.table.db = schemaName;
-                    } else if (typeof node.from.table === 'string' && !node.from.table.includes('.')) {
-                        node.from.table = `${schemaName}.${node.from.table}`;
-                    }
-                }
+                processTableReference(node.from, schemaName, 'DELETE');
             }
+        }
+
+        // ==========================================
+        // SELECT (FROM, JOIN, etc.)
+        // ==========================================
+        if (node.from) {
+            processTableReference(node.from, schemaName, 'SELECT (FROM)');
         }
 
         // JOIN clauses
@@ -129,16 +179,27 @@ export function injectSchemaInAST(ast, schemaName) {
             const joins = Array.isArray(node.join) ? node.join : [node.join];
             joins.forEach(join => {
                 if (join.table) {
-                    if (typeof join.table === 'object' && join.table.table && !join.table.db) {
-                        join.table.db = schemaName;
-                    } else if (typeof join.table === 'string' && !join.table.includes('.')) {
-                        join.table = `${schemaName}.${join.table}`;
-                    }
+                    processTableReference(join.table, schemaName, 'JOIN');
                 }
             });
         }
 
+        // ==========================================
+        // DROP TABLE
+        // ==========================================
+        if (node.type === 'drop' && node.keyword === 'table') {
+            if (node.name && Array.isArray(node.name)) {
+                node.name.forEach(tableItem => {
+                    if (tableItem.table) {
+                        processTableReference(tableItem, schemaName, 'DROP TABLE');
+                    }
+                });
+            }
+        }
+
+        // ==========================================
         // Recursivamente procesar hijos
+        // ==========================================
         Object.keys(node).forEach(key => {
             if (node[key] && typeof node[key] === 'object') {
                 processNode(node[key]);
@@ -146,6 +207,7 @@ export function injectSchemaInAST(ast, schemaName) {
         });
     }
 
+    // Procesar el AST completo
     if (Array.isArray(ast)) {
         ast.forEach(item => processNode(item));
     } else {
@@ -162,20 +224,20 @@ export function transformSQL(sql, schemaName) {
     try {
         const opt = { database: 'Postgresql' };
 
-        console.log('🔧 Transformando SQL:', sql);
-        console.log('🔧 Con schema:', schemaName);
+        console.log(' Transformando SQL:', sql);
+        console.log(' Con schema:', schemaName);
 
         // Parsear a AST usando la instancia del parser
         let ast = parser.astify(sql, opt);
         console.log(' AST generado:', JSON.stringify(ast, null, 2));
 
-        // Inyectar schema
+        // Inyectar schema y nombres únicos
         ast = injectSchemaInAST(ast, schemaName);
         console.log(' AST transformado:', JSON.stringify(ast, null, 2));
 
         // Reconstruir SQL usando la instancia del parser
         const transformedSQL = parser.sqlify(ast, opt);
-        console.log('✅ SQL transformado:', transformedSQL);
+        console.log(' SQL transformado:', transformedSQL);
 
         return {
             original: sql,
@@ -187,7 +249,7 @@ export function transformSQL(sql, schemaName) {
         console.error(' Error transformando SQL:', error);
         return {
             original: sql,
-            transformed: sql, // Devolvemos el original si hay error
+            transformed: sql,
             ast: null,
             error: error.message,
             success: false
@@ -238,7 +300,6 @@ export function needsSchemaInjection(ast) {
             types.push(QUERY_TYPES.TRUNCATE);
         }
 
-        // Recursivamente procesar hijos
         Object.keys(node).forEach(key => {
             if (node[key] && typeof node[key] === 'object') {
                 detect(node[key]);

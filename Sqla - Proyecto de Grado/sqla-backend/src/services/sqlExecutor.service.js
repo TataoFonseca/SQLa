@@ -23,7 +23,25 @@ export async function executeSQL(sqlQuery, schemaName) {
     const uniqueSchemas = new Set();
     for (const match of matches) {
         const usedSchema = match[1];
+
+        // Ignorar si parece un número decimal (como 999.99)
         if (/^\d+$/.test(usedSchema)) {
+            continue;
+        }
+
+        // Ignorar si contiene @ (posible email)
+        if (usedSchema.includes('@')) {
+            console.log('⏭️ Ignorando posible email como schema:', usedSchema);
+            continue;
+        }
+
+        // Verificar que no estamos dentro de una cadena de texto
+        const beforeMatch = sqlToExecute.substring(0, match.index);
+        const quoteCount = (beforeMatch.match(/'/g) || []).length;
+
+        // Si estamos dentro de comillas simples (número impar de comillas antes), no es un schema real
+        if (quoteCount % 2 === 1) {
+            console.log('⏭️ Ignorando posible schema dentro de string:', usedSchema);
             continue;
         }
 
@@ -39,6 +57,9 @@ export async function executeSQL(sqlQuery, schemaName) {
         }
     }
 
+    // ==========================================
+    // TRY/CATCH PARA EJECUTAR LA CONSULTA
+    // ==========================================
     try {
         const pool = await getPool();
 
@@ -47,6 +68,8 @@ export async function executeSQL(sqlQuery, schemaName) {
             SET NOCOUNT ON;
             ${sqlToExecute}
         `;
+
+        console.log('🔍 Ejecutando SQL:', finalQuery);
 
         const result = await pool.request().query(finalQuery);
 
@@ -59,12 +82,49 @@ export async function executeSQL(sqlQuery, schemaName) {
         };
 
     } catch (error) {
-        console.error("Error ejecutando en SQL Server:", error.message);
+        // ==========================================
+        // CAPTURA DETALLADA DEL ERROR DE SQL SERVER
+        // ==========================================
+        console.error("❌ ERROR DETALLADO DE SQL SERVER:");
+        console.error("   Mensaje:", error.message);
+        console.error("   Código:", error.code);
+        console.error("   Número:", error.number);
+        console.error("   Estado:", error.state);
+        console.error("   Clase:", error.class);
+        console.error("   Procedimiento:", error.procName);
+        console.error("   Línea:", error.lineNumber);
+        console.error("   Nombre del error:", error.name);
 
+        // Mostrar errores previos si existen (los importantes para FK)
+        if (error.precedingErrors && error.precedingErrors.length > 0) {
+            console.error("📌 ERRORES PREVIOS (los importantes):");
+            error.precedingErrors.forEach((err, i) => {
+                console.error(`   [${i}] Mensaje:`, err.message);
+                console.error(`       Número:`, err.number);
+            });
+        }
+
+        // Mostrar el error completo como objeto
+        console.error("📦 Error completo:", JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
+
+        // Errores específicos para mensajes amigables
         if (error.message.includes("There is already an object named")) {
             throw new Error(`La tabla ya existe en tu schema. Las tablas son aisladas por sesión.`);
+        }
+
+        if (error.message.includes("FOREIGN KEY") || error.number === 547) {
+            console.error("🔍 ERROR DE FOREIGN KEY DETECTADO");
+            // Si hay errores previos, el primero suele ser el más específico
+            if (error.precedingErrors && error.precedingErrors.length > 0) {
+                throw new Error(`Error de FOREIGN KEY: ${error.precedingErrors[0].message}`);
+            }
         }
 
         throw new Error(error.message);
     }
 }
+
+
+
+
+
