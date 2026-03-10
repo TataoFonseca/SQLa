@@ -3,6 +3,7 @@
 import * as Blockly from 'blockly';
 import { javascriptGenerator } from 'blockly/javascript';
 import mermaid from 'mermaid';
+import { apiService } from '../services/apiService.js';
 
 // ===Importe de Bloques===
 
@@ -11,71 +12,50 @@ import { CREATE_TABLE_DEFINITION, CREATE_TABLE_GENERATOR } from '../blocks/ddl_C
 import { COLUMN_DEFINITION, COLUMN_GENERATOR } from '../blocks/ddl_ColumnDefinitionBlock.js';
 
 // BLOQUES DML
-// (Agregado) FROM simple sin soporte de JOINs
 import { FROM_SIMPLE_DEFINITION, FROM_SIMPLE_GENERATOR } from '../blocks/dml_FromSimpleBlock.js';
 import { FROM_DEFINITION, FROM_GENERATOR } from '../blocks/dml_FromBlock.js';
 import { SELECT_DEFINITION, SELECT_GENERATOR, } from '../blocks/dml_SelectBlock.js';
 
 import { WHERE_DEFINITION, WHERE_GENERATOR } from '../blocks/dml_WhereBlock.js';
-//EXTENSIÓN DEL MENÚ CONTEXTUAL para WHERE
 import { registerWhereContextMenu } from '../blocks/extensions/whereContextMenu.js';
-
-//EXTENSIÓN DEL MENÚ CONTEXTUAL PARA FROM (FromSimpleBlock y FromBlock)
 import { registerFromContextMenu, registerFromJoinsContextMenu } from '../blocks/extensions/fromContextMenu.js';
 
-
-//BLOQUES DML JOIN
 import { JOIN_DEFINITION, JOIN_GENERATOR, JOIN_ONCHANGE } from '../blocks/dml_JoinBlock.js';
 
-// BLOQUE DE EXPRESSION CON MENÚ CONTEXTUAL para BLOQUES DISTINCT Y TOP
 import {
   EXPRESSION_DEFINITION, EXPRESSION_GENERATOR,
-  EXPRESSION_ONCHANGE // Onchange para manejar la coma dinámica en el bloque de expresión
+  EXPRESSION_ONCHANGE
 } from '../blocks/dml_ExpressionBlock.js';
 
-// BLOQUES DML: DISTINCT Y TOP
 import { DISTINCT_DEFINITION, DISTINCT_GENERATOR } from '../blocks/dml_DistinctBlock.js';
 import { TOP_DEFINITION, TOP_GENERATOR } from '../blocks/dml_TopBlock.js';
 
-// EXTENSIÓN DEL MENÚ CONTEXTUAL para DISTINCT/TOP en EXPRESSION
 import { registerExpressionContextMenu } from '../blocks/extensions/expressionContextMenu.js';
 
-
-// BLOQUE DE EXPRESSION dentro de funciones de agregación (sin NEXT, sin onchange)
 import { AGGREGATE_EXPRESSION_DEFINITION, AGGREGATE_EXPRESSION_GENERATOR, } from '../blocks/dml_aggregateFunctionsExpressionBlock.js';
 
-// BLOQUES DE FUNCIONES DE AGREGACIÓN
 import {
   SUM_DEFINITION, SUM_GENERATOR,
   AVG_DEFINITION, AVG_GENERATOR,
   COUNT_DEFINITION, COUNT_GENERATOR,
   MIN_DEFINITION, MIN_GENERATOR,
   MAX_DEFINITION, MAX_GENERATOR,
-  AGGREGATE_FUNCTION_ONCHANGE // Onchange compartido para todos los bloques de funciones de agregación para añadir soporte de coma dinámica
+  AGGREGATE_FUNCTION_ONCHANGE
 } from '../blocks/dml_aggregateFunctionsBlock.js';
 
-// EXTENSIÓN PARA EXPRESIONES EN FUNCIONES DE AGREGACIÓN
 import { registerAggregateFunctionExpressionContextMenu } from '../blocks/extensions/aggregateFunctionExpressionContextMenu.js';
 
-// BLOQUES DML: GROUP BY y su Bloque Columna GROUPBY COLUMN
 import { GROUPBY_DEFINITION, GROUPBY_GENERATOR, GROUPBY_ONCHANGE } from '../blocks/dml_GroupByBlock.js';
 import { GROUPBY_COLUMN_DEFINITION, GROUPBY_COLUMN_GENERATOR, GROUPBY_COLUMN_ONCHANGE } from '../blocks/dml_GroupByColumnBlock.js';
 
-// ESPACIO PARA BLOQUE HAVING
 import { HAVING_DEFINITION, HAVING_GENERATOR } from '../blocks/dml_HavingBlock.js';
-
-// EXTENSIÓN PARA EXPRESION EN HAVING
 import { registerHavingExpressionContextMenu } from '../blocks/extensions/havingExpressionContextMenu.js';
 
-// BLOQUES DML: EXPRESSION SINGLE — versión sin NEXT para lado derecho de comparaciones
 import { EXPRESSION_SINGLE_DEFINITION, EXPRESSION_SINGLE_GENERATOR } from '../blocks/dml_ExpressionSingleBlock.js';
 
-// BLOQUES DML: COMPARACIONES (output Condition — para WHERE/HAVING)
 import { COMPARISON_DEFINITION, COMPARISON_GENERATOR } from '../blocks/dml_ComparisonBlock.js';
 import { QUANTIFIED_COMPARISON_DEFINITION, QUANTIFIED_COMPARISON_GENERATOR } from '../blocks/dml_QuantifiedComparisonBlock.js';
 import { MEMBERSHIP_DEFINITION, MEMBERSHIP_GENERATOR } from '../blocks/dml_MembershipBlock.js';
-
-
 
 
 mermaid.initialize({
@@ -89,6 +69,29 @@ export const AppController = {
 
   init: function () {
 
+    // ── Verificar sesión activa ──────────────────────────────────
+    const { sessionId } = apiService.getCurrentSession();
+    const storedId = localStorage.getItem('sqlSessionId');
+
+    if (!sessionId && !storedId) {
+      // Sin sesión → redirigir al inicio
+      window.location.href = '/index.html';
+      return;
+    }
+
+    // Sincronizar apiService con lo guardado en localStorage si es necesario
+    if (!sessionId && storedId) {
+      apiService.currentSessionId = storedId;
+      apiService.currentSchema = localStorage.getItem('sqlSchema');
+    }
+
+    // Mostrar UUID en el campo de sesión del header
+    const sessionInput = document.getElementById('sessionNumber');
+    if (sessionInput) {
+      const displayId = sessionId || storedId;
+      sessionInput.value = displayId;
+    }
+
     // === DEFINIR ORDEN DE OPERACIONES PARA EL GENERADOR ===
     javascriptGenerator.ORDER_ATOMIC = 0;
     javascriptGenerator.ORDER_FUNCTION_CALL = 1;
@@ -99,74 +102,56 @@ export const AppController = {
     javascriptGenerator.ORDER_SUBTRACTION = 4;
     javascriptGenerator.ORDER_NONE = 99;
 
-    //REGISTRO DEL MENÚ CONTEXTUAL PARA EL BLOQUE DE EXPRESIÓN (ANTES DE LOS BLOQUES)
+    // REGISTRO DE EXTENSIONES DE MENÚ CONTEXTUAL
     registerExpressionContextMenu();
-
-    //REGISTRO DEL MENÚ CONTEXTUAL PARA FROM (FromSimpleBlock y FromBlock)
     registerFromContextMenu();
     registerFromJoinsContextMenu();
-
-    //REGISTRO DEL MENÚ CONTEXTUAL PARA WHERE
     registerWhereContextMenu();
-
-    //REGISTRO DEL MENÚ CONTEXTUAL DE EXTENSIÓN PARA EXPRESIONES EN FUNCIONES DE AGREGACIÓN
     registerAggregateFunctionExpressionContextMenu();
-
-    //REGISTRO DEL MENÚ CONTEXTUAL DE EXTENSIÓN PARA EXPRESIONES EN HAVING
     registerHavingExpressionContextMenu();
 
-    // PASO 2: REGISTRO DE BLOQUES (JSON) ===
-    //Bloques sin OnChange, se usa defineBlocksWithJsonArray
+    // REGISTRO DE BLOQUES (JSON)
     Blockly.defineBlocksWithJsonArray([
       // DDL
       CREATE_TABLE_DEFINITION,
       COLUMN_DEFINITION,
 
       // DML
-      //Agregado FROM simple sin soporte de JOINs
       FROM_SIMPLE_DEFINITION,
       FROM_DEFINITION,
       SELECT_DEFINITION,
       WHERE_DEFINITION,
 
-      //DML: JOIN
-      // JOIN_DEFINITION,
-
       // DML: DISTINCT Y TOP
-      DISTINCT_DEFINITION, // Ahora es flag global, sin EXPRESSION input
-      TOP_DEFINITION, // Ahora es flag global, sin EXPRESSION input
+      DISTINCT_DEFINITION,
+      TOP_DEFINITION,
 
-      //DML: HAVING
+      // DML: HAVING
       HAVING_DEFINITION,
 
-      //DML: EXPRESSION SINGLE (sin onchange, sin NEXT) que se auto-inserta en LEFT y RIGHT en los bloques de comparación
+      // DML: EXPRESSION SINGLE
       EXPRESSION_SINGLE_DEFINITION,
 
-      // DML: COMPARACION, QUANTIFIED COMPARISON Y MEMBERSHIP
+      // DML: COMPARACIONES
       COMPARISON_DEFINITION,
       QUANTIFIED_COMPARISON_DEFINITION,
       MEMBERSHIP_DEFINITION,
-
     ]);
 
-    // Bloques con onchange (coma dinámica) → registro manual con Blockly.Blocks
-    //DML
+    // Bloques con onchange → registro manual
     Blockly.Blocks['sql_expression'] = {
       init: function () { this.jsonInit(EXPRESSION_DEFINITION); },
       onchange: EXPRESSION_ONCHANGE
     };
 
     Blockly.Blocks['sql_aggregate_expression'] = {
-      init: function () { this.jsonInit(AGGREGATE_EXPRESSION_DEFINITION); }, // Bloque de expresión para funciones de agregación
+      init: function () { this.jsonInit(AGGREGATE_EXPRESSION_DEFINITION); },
     };
 
-    //DML: JOIN (con onchange)
     Blockly.Blocks['sql_join'] = {
       init: function () { this.jsonInit(JOIN_DEFINITION); },
       onchange: JOIN_ONCHANGE
     };
-
-    //DML: FUNCIONES DE AGREGACIÓN (con onchange)
 
     Blockly.Blocks['sql_sum'] = {
       init: function () { this.jsonInit(SUM_DEFINITION); },
@@ -193,7 +178,6 @@ export const AppController = {
       onchange: AGGREGATE_FUNCTION_ONCHANGE
     };
 
-    // DML: GROUP BY
     Blockly.Blocks['sql_group_by'] = {
       init: function () { this.jsonInit(GROUPBY_DEFINITION); },
       onchange: GROUPBY_ONCHANGE
@@ -204,8 +188,7 @@ export const AppController = {
       onchange: GROUPBY_COLUMN_ONCHANGE
     };
 
-
-    // === PASO 3: REGISTRO DE GENERADORES DDL ===
+    // REGISTRO DE GENERADORES DDL
     javascriptGenerator.forBlock['sql_create_table'] = function (block) {
       return CREATE_TABLE_GENERATOR(block, javascriptGenerator);
     };
@@ -214,8 +197,7 @@ export const AppController = {
       return COLUMN_GENERATOR(block, javascriptGenerator);
     };
 
-    // === PASO 4: REGISTRO DE GENERADORES DML ===
-    // DML: SELECT
+    // REGISTRO DE GENERADORES DML
     javascriptGenerator.forBlock['sql_select'] = function (block) {
       return SELECT_GENERATOR(block, javascriptGenerator);
     };
@@ -224,20 +206,17 @@ export const AppController = {
       return EXPRESSION_GENERATOR(block, javascriptGenerator);
     };
 
-    // DML: FROM (simple y con joins)
     javascriptGenerator.forBlock['sql_from_simple'] = function (block) {
       return FROM_SIMPLE_GENERATOR(block, javascriptGenerator);
     };
+
     javascriptGenerator.forBlock['sql_from'] = function (block) {
       return FROM_GENERATOR(block, javascriptGenerator);
     };
 
-    // DML: JOIN
     javascriptGenerator.forBlock['sql_join'] = function (block) {
       return JOIN_GENERATOR(block, javascriptGenerator);
     };
-
-    // DML: WHERE
 
     javascriptGenerator.forBlock['sql_where'] = function (block) {
       return WHERE_GENERATOR(block, javascriptGenerator);
@@ -247,9 +226,6 @@ export const AppController = {
       return AGGREGATE_EXPRESSION_GENERATOR(block, javascriptGenerator);
     };
 
-
-
-    // === PASO 5: GENERADORES DML: DISTINCT Y TOP
     javascriptGenerator.forBlock['sql_distinct'] = function (block) {
       return DISTINCT_GENERATOR(block, javascriptGenerator);
     };
@@ -258,7 +234,6 @@ export const AppController = {
       return TOP_GENERATOR(block, javascriptGenerator);
     };
 
-    // === PASO 6: GENERADORES DML FUNCIONES DE AGREGACIÓN
     javascriptGenerator.forBlock['sql_sum'] = function (block) {
       return SUM_GENERATOR(block, javascriptGenerator);
     };
@@ -279,7 +254,6 @@ export const AppController = {
       return MAX_GENERATOR(block, javascriptGenerator);
     };
 
-    // === PASO 7: GENERADORES DML GROUP BY
     javascriptGenerator.forBlock['sql_group_by'] = function (block) {
       return GROUPBY_GENERATOR(block, javascriptGenerator);
     };
@@ -288,27 +262,25 @@ export const AppController = {
       return GROUPBY_COLUMN_GENERATOR(block, javascriptGenerator);
     };
 
-    // PASO 8: GENERADORES DML HAVING
     javascriptGenerator.forBlock['sql_having'] = function (block) {
       return HAVING_GENERATOR(block, javascriptGenerator);
     };
 
-    //Generador para el bloque de expresión simple (sin NEXT) que se auto-inserta en HAVING y en el lado derecho de las comparaciones
     javascriptGenerator.forBlock['sql_expression_single'] = function (block) {
       return EXPRESSION_SINGLE_GENERATOR(block, javascriptGenerator);
     };
 
-    // === PASO 9: GENERADORES DML: COMPARACIONES ===
     javascriptGenerator.forBlock['sql_comparison'] = function (block) {
       return COMPARISON_GENERATOR(block, javascriptGenerator);
     };
+
     javascriptGenerator.forBlock['sql_quantified_comparison'] = function (block) {
       return QUANTIFIED_COMPARISON_GENERATOR(block, javascriptGenerator);
     };
+
     javascriptGenerator.forBlock['sql_membership'] = function (block) {
       return MEMBERSHIP_GENERATOR(block, javascriptGenerator);
     };
-
 
     // === TEMA PERSONALIZADO PARA BLOCKLY ===
     const darkGlassTheme = Blockly.Theme.defineTheme('darkGlass', {
@@ -334,42 +306,29 @@ export const AppController = {
     const sqlDiv = document.getElementById('sqlOutput');
     const openBdMenu = document.getElementById('openBdMenu');
     const exportBdMenu = document.getElementById('exportBdMenu');
+    const executeBtn = document.getElementById('executeBtn');
 
     // === Inicializar Blockly ===
     this.workspace = Blockly.inject(blocklyDiv, {
       toolbox: document.getElementById('toolbox'),
       theme: darkGlassTheme,
       renderer: 'geras',
-      move: { //añadido, opción de scroll en menus
+      move: {
         scrollbars: true,
         drag: true,
         wheel: true
       }
     });
 
-    // añadido, deshabilidar autoClose del flyout para que no se cierre al arrastrar bloques
     if (this.workspace.getFlyout()) {
       this.workspace.getFlyout().autoClose = false;
 
-      // Fix doble click: escuchar clicks en el toolbox via DOM
       setTimeout(() => {
-
         const toolbox = this.workspace.getToolbox();
-        // const toolboxDiv = document.querySelector('.blocklyToolbox');
-
-        // toolboxDiv.addEventListener('click', () => {
-        //   const selected = toolbox.getSelectedItem();
-        //   console.log('selected:', selected);
-        //   console.log('selected proto methods:', selected ? Object.getOwnPropertyNames(Object.getPrototypeOf(selected)) : 'null');
-        //   console.log('toolbox proto methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(toolbox)));
-        // });
 
         const dmlItem = toolbox.getToolboxItems().find(item =>
           item.getName?.() === 'Sentencias DML'
         );
-
-        // console.log('dmlItem:', dmlItem);
-        // console.log('dmlItem div:', dmlItem?.getDiv?.());
 
         const dmlDiv = dmlItem?.getDiv?.();
         if (dmlDiv) {
@@ -379,7 +338,6 @@ export const AppController = {
             const children = dmlItem.getChildToolboxItems();
             const isVisible = children.some(child => child.isVisible?.());
 
-            // Si pasó de visible a no visible, re-seleccionar DML
             if (wasVisible && !isVisible) {
               setTimeout(() => toolbox.setSelectedItem(dmlItem), 50);
             }
@@ -396,7 +354,7 @@ export const AppController = {
       }, 200);
     }
 
-    // === EFECTO CRISTAL AL FONDO INTERNO ===
+    // Fondo transparente en Blockly
     setTimeout(() => {
       const blocklyBackground = document.querySelector('.blocklyMainBackground');
       if (blocklyBackground) {
@@ -412,57 +370,369 @@ export const AppController = {
     Blockly.svgResize(this.workspace);
     window.addEventListener('resize', () => Blockly.svgResize(this.workspace));
 
-    // === LISTENER PARA GENERAR CÓDIGO SQL ===
+    // === LISTENER: actualizar SQL Output al cambiar workspace ===
     this.workspace.addChangeListener(() => {
       const code = javascriptGenerator.workspaceToCode(this.workspace);
       console.log('SQL generado:', code);
-
-      // Actualiza el div de SQL con el código generado
-      if (sqlDiv && code.trim()) {
-        sqlDiv.innerHTML = `
-          <h2>Resultado de Query SQL</h2>
-          <pre>${code}</pre>
-        `;
-      } else if (sqlDiv) {
-        // Muestra el ejemplo si no hay bloques
-        this.showSQLExample();
-      }
     });
 
     // === EVENTOS DE INTERFAZ ===
-    showMermaidBtn.addEventListener('click', () => {
+    showMermaidBtn?.addEventListener('click', () => {
       mermaidDiv.style.display =
         mermaidDiv.style.display === 'none' ? 'block' : 'none';
       this.resizeBlockly();
     });
 
-    showOutputBtn.addEventListener('click', () => {
+    showOutputBtn?.addEventListener('click', () => {
       sqlDiv.style.display =
         sqlDiv.style.display === 'none' ? 'block' : 'none';
       this.resizeBlockly();
     });
 
-    showOpenBdBtn.addEventListener('click', (e) => {
+    showOpenBdBtn?.addEventListener('click', (e) => {
       e.stopPropagation();
-      openBdMenu.classList.toggle('active');
-      exportBdMenu.classList.remove('active');
+      openBdMenu?.classList.toggle('active');
+      exportBdMenu?.classList.remove('active');
     });
 
-    showExportBdBtn.addEventListener('click', (e) => {
+    showExportBdBtn?.addEventListener('click', (e) => {
       e.stopPropagation();
-      exportBdMenu.classList.toggle('active');
-      openBdMenu.classList.remove('active');
+      exportBdMenu?.classList.toggle('active');
+      openBdMenu?.classList.remove('active');
     });
 
     document.addEventListener('click', () => {
-      openBdMenu.classList.remove('active');
-      exportBdMenu.classList.remove('active');
+      openBdMenu?.classList.remove('active');
+      exportBdMenu?.classList.remove('active');
     });
 
-    // === Mostrar ejemplos iniciales ===
-    console.log('Blockly inicializado con bloques SQL + DISTINCT/TOP', this.workspace);
-    this.showMermaidExample("Esquema_Estudiantes");
-    this.showSQLExample();
+    // ============================================================
+    // BOTÓN EJECUTAR — conectado al backend
+    // ============================================================
+    executeBtn?.addEventListener('click', async () => {
+      const sql = javascriptGenerator.workspaceToCode(this.workspace).trim();
+
+      if (!sql) {
+        sqlDiv.style.display = 'block';
+        sqlDiv.innerHTML = `
+          <h2>Resultado de Query SQL</h2>
+          <pre style="color: #ffaa00;">⚠️ El workspace está vacío. Agrega bloques para generar SQL.</pre>
+        `;
+        return;
+      }
+
+      // Estado de carga
+      executeBtn.disabled = true;
+      executeBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Ejecutando...';
+      sqlDiv.style.display = 'block';
+      sqlDiv.innerHTML = `
+        <h2>Resultado de Query SQL</h2>
+        <pre style="color: #aaa;">⏳ Ejecutando consulta en el servidor...</pre>
+      `;
+
+      try {
+        const result = await apiService.executeQuery(sql);
+        this.showExecuteResult(result, sql);
+      } catch (err) {
+        this.showExecuteResult({ ok: false, error: err.message }, sql);
+      } finally {
+        executeBtn.disabled = false;
+        executeBtn.innerHTML = '<i class="bi bi-play-fill me-1"></i>Ejecutar';
+      }
+    });
+
+    console.log('Blockly inicializado con bloques SQL', this.workspace);
+  },
+
+  // ============================================================
+  // MÉTODO: mostrar resultado del backend + actualizar Mermaid
+  // ============================================================
+  showExecuteResult: function (result, originalSQL = '') {
+    const sqlDiv = document.getElementById('sqlOutput');
+    sqlDiv.style.display = 'block';
+
+    if (!result.ok) {
+      sqlDiv.innerHTML = `
+        <h2>Error al ejecutar</h2>
+        <pre style="color: #ff5555;">❌ ${result.error}</pre>
+        ${originalSQL ? `
+          <details style="margin-top: 8px; cursor: pointer;">
+            <summary style="color: rgba(255,255,255,0.4); font-size: 0.8rem;">SQL que se intentó ejecutar</summary>
+            <pre style="color: #888; font-size: 0.8rem; margin-top: 5px;">${originalSQL}</pre>
+          </details>
+        ` : ''}
+      `;
+      return;
+    }
+
+    const { executionResult, transformedSQL, ast } = result;
+    const rows = executionResult?.rows || [];
+    const rowsAffected = executionResult?.rowsAffected?.[0] ?? null;
+
+    // Construir tabla de resultados si hay filas
+    let contentHTML = '';
+
+    if (rows.length > 0) {
+      const headers = Object.keys(rows[0]);
+      contentHTML = `
+        <div style="overflow-x: auto; margin-top: 10px;">
+          <table style="
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.88rem;
+            font-family: 'Fira Code', monospace;
+          ">
+            <thead>
+              <tr>
+                ${headers.map(h => `
+                  <th style="
+                    padding: 7px 14px;
+                    background: rgba(122, 92, 255, 0.35);
+                    border: 1px solid rgba(255,255,255,0.15);
+                    color: #fff;
+                    text-align: left;
+                    white-space: nowrap;
+                  ">${h}</th>
+                `).join('')}
+              </tr>
+            </thead>
+            <tbody>
+              ${rows.map((row, i) => `
+                <tr style="background: ${i % 2 === 0 ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.04)'};">
+                  ${headers.map(h => `
+                    <td style="
+                      padding: 5px 14px;
+                      border: 1px solid rgba(255,255,255,0.08);
+                      color: #00ff99;
+                    ">${row[h] ?? '<span style="color:#666">NULL</span>'}</td>
+                  `).join('')}
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+    } else if (rowsAffected !== null && rowsAffected > 0) {
+      contentHTML = `<pre style="color: #00ff99; margin-top: 10px;">✅ ${rowsAffected} fila(s) afectada(s)</pre>`;
+    } else {
+      contentHTML = `<pre style="color: #aaa; margin-top: 10px;">✅ Consulta ejecutada correctamente. Sin filas de resultado.</pre>`;
+    }
+
+    sqlDiv.innerHTML = `
+      <h2>
+        Resultado de Query SQL
+        ${rows.length > 0
+        ? `<span style="font-size: 0.78rem; font-weight: 400; color: #aaa; margin-left: 10px;">${rows.length} fila(s)</span>`
+        : ''
+      }
+      </h2>
+      ${contentHTML}
+      <details style="margin-top: 12px; cursor: pointer;">
+        <summary style="color: rgba(255,255,255,0.4); font-size: 0.8rem;">Ver SQL transformado enviado al servidor</summary>
+        <pre style="color: #888; font-size: 0.8rem; margin-top: 6px;">${transformedSQL || originalSQL}</pre>
+      </details>
+    `;
+
+    // Actualizar diagrama Mermaid con el AST de la respuesta
+    if (ast) {
+      this.updateMermaidFromAST(ast);
+    }
+  },
+
+  // ============================================================
+  // MÉTODO: actualizar el diagrama Mermaid desde el AST
+  // ============================================================
+  updateMermaidFromAST: async function (ast) {
+    const mermaidDiv = document.getElementById('mermaidDiv');
+    if (!mermaidDiv) return;
+
+    // Mostrar el panel si estaba oculto
+    mermaidDiv.style.display = 'block';
+    this.resizeBlockly();
+
+    const diagram = this.buildMermaidFromAST(ast);
+    if (!diagram) {
+      mermaidDiv.innerHTML = `
+        <h2>Diagrama ERD</h2>
+        <p style="color: rgba(255,255,255,0.4); font-size: 0.9rem; margin-top: 12px;">
+          No se pudo generar el diagrama para esta consulta.
+        </p>
+      `;
+      return;
+    }
+
+    mermaidDiv.innerHTML = `
+      <h2>Diagrama ERD</h2>
+      <div id="mermaidDiagram"></div>
+    `;
+
+    try {
+      // Mermaid necesita un id único en cada render para no conflictuar
+      const renderId = 'mermaid-' + Date.now();
+      const { svg } = await mermaid.render(renderId, diagram);
+      document.getElementById('mermaidDiagram').innerHTML = svg;
+    } catch (err) {
+      console.error('Error renderizando Mermaid:', err);
+      mermaidDiv.innerHTML = `
+        <h2>Diagrama ERD</h2>
+        <pre style="color: #ff5555; font-size: 0.8rem;">Error al renderizar el diagrama.\n${err.message}</pre>
+        <details style="margin-top: 8px;">
+          <summary style="color: rgba(255,255,255,0.4); font-size: 0.8rem; cursor: pointer;">Ver código Mermaid generado</summary>
+          <pre style="color: #888; font-size: 0.78rem; margin-top: 6px;">${diagram}</pre>
+        </details>
+      `;
+    }
+  },
+
+  // ============================================================
+  // MÉTODO: construir string Mermaid a partir del AST del backend
+  // ============================================================
+  buildMermaidFromAST: function (ast) {
+    // Normalizar: el AST puede llegar como array o como objeto
+    const nodes = Array.isArray(ast) ? ast : [ast];
+
+    // Acumuladores
+    const tables = {};   // { tableName: { columns: [], pk: null } }
+    const relations = [];   // [{ from, to, type, label }]
+
+    // Limpiar nombre de tabla: quitar schema (session_xxx.tableName_shortId → tableName)
+    function cleanName(raw) {
+      if (!raw) return 'tabla';
+      // quitar schema si viene con punto
+      const parts = raw.split('.');
+      let name = parts[parts.length - 1];
+      // quitar sufijo _xxxxxxxx (8 hex chars) que añade el transformer
+      name = name.replace(/_[a-f0-9]{8}$/i, '');
+      return name;
+    }
+
+    function ensureTable(raw) {
+      const name = cleanName(raw);
+      if (!tables[name]) tables[name] = { columns: [], pk: null };
+      return name;
+    }
+
+    // Mapear tipos SQL a tipos Mermaid más limpios
+    function mapType(dataType) {
+      if (!dataType) return 'string';
+      const t = (dataType.dataType || dataType).toUpperCase();
+      if (['INT', 'INTEGER', 'BIGINT', 'SMALLINT', 'TINYINT'].includes(t)) return 'int';
+      if (['DECIMAL', 'NUMERIC', 'FLOAT', 'REAL', 'MONEY'].includes(t)) return 'float';
+      if (['BIT', 'BOOLEAN'].includes(t)) return 'boolean';
+      if (['DATE'].includes(t)) return 'date';
+      if (['DATETIME', 'DATETIME2', 'TIMESTAMP'].includes(t)) return 'datetime';
+      return 'string';
+    }
+
+    for (const node of nodes) {
+      if (!node) continue;
+
+      // ── CREATE TABLE ──────────────────────────────────────────
+      if (node.type === 'create' && node.keyword === 'table') {
+        const rawName = node.table?.[0]?.table || node.table?.[0];
+        const tableName = ensureTable(rawName);
+
+        const defs = node.create_definitions || [];
+        for (const def of defs) {
+          // Columna normal
+          if (def.resource === 'column') {
+            const colName = def.column?.column || def.column;
+            const colType = mapType(def.definition);
+            const isPK = def.primary_key || false;
+            const nullable = def.nullable?.type !== 'not null';
+
+            tables[tableName].columns.push({
+              name: colName,
+              type: colType,
+              pk: isPK,
+              nullable
+            });
+
+            if (isPK) tables[tableName].pk = colName;
+          }
+
+          // PRIMARY KEY constraint separado
+          if (def.resource === 'constraint' && def.constraint_type === 'PRIMARY KEY') {
+            const pkCol = def.definition?.[0]?.column || def.definition?.[0];
+            if (pkCol) tables[tableName].pk = pkCol;
+            // Marcar la columna como PK
+            const col = tables[tableName].columns.find(c => c.name === pkCol);
+            if (col) col.pk = true;
+          }
+
+          // FOREIGN KEY constraint
+          if (def.resource === 'constraint' && def.constraint_type === 'FOREIGN KEY') {
+            const fromCol = def.definition?.[0]?.column || def.definition?.[0];
+            const refTable = def.reference_definition?.table?.[0]?.table
+              || def.reference_definition?.table?.[0];
+            const refCol = def.reference_definition?.definition?.[0]?.column
+              || def.reference_definition?.definition?.[0];
+
+            if (refTable) {
+              ensureTable(refTable);
+              relations.push({
+                from: tableName,
+                to: cleanName(refTable),
+                label: `${fromCol} → ${refCol || '?'}`
+              });
+            }
+          }
+        }
+      }
+
+      // ── SELECT — extraer tablas referenciadas ─────────────────
+      if (node.type === 'select') {
+        const fromList = Array.isArray(node.from) ? node.from : [];
+        for (const f of fromList) {
+          if (f.table) ensureTable(f.table);
+        }
+
+        const joins = Array.isArray(node.join) ? node.join : [];
+        for (const j of joins) {
+          if (j.table?.table) {
+            const left = cleanName(fromList[0]?.table);
+            const right = ensureTable(j.table.table);
+            relations.push({ from: left, to: right, label: j.join || 'JOIN' });
+          }
+        }
+      }
+
+      // ── INSERT / UPDATE / DELETE — registrar tabla ────────────
+      if (['insert', 'update', 'delete'].includes(node.type)) {
+        const rawTable = node.table?.[0]?.table || node.table?.[0]
+          || node.from?.[0]?.table;
+        if (rawTable) ensureTable(rawTable);
+      }
+    }
+
+    // Si no hay ninguna tabla, no hay diagrama
+    if (Object.keys(tables).length === 0) return null;
+
+    // ── Construir string Mermaid ──────────────────────────────────
+    let diagram = 'erDiagram\n';
+
+    for (const [name, info] of Object.entries(tables)) {
+      diagram += `  ${name} {\n`;
+      if (info.columns.length === 0) {
+        // Tabla sin columnas conocidas (referenciada en SELECT, etc.)
+        diagram += `    string id\n`;
+      } else {
+        for (const col of info.columns) {
+          const pkMark = col.pk ? ' PK' : '';
+          diagram += `    ${col.type} ${col.name}${pkMark}\n`;
+        }
+      }
+      diagram += `  }\n`;
+    }
+
+    for (const rel of relations) {
+      // Asegurarse de que ambas tablas existen en el diagrama
+      if (!tables[rel.from]) ensureTable(rel.from);
+      if (!tables[rel.to]) ensureTable(rel.to);
+      diagram += `  ${rel.from} ||--o{ ${rel.to} : "${rel.label}"\n`;
+    }
+
+    return diagram;
   },
 
   resizeBlockly: function () {
@@ -471,49 +741,12 @@ export const AppController = {
     }
   },
 
-  showMermaidExample: async function (schemaName) {
-    const mermaidDiv = document.getElementById('mermaidDiv');
-    const diagram = `
-erDiagram
-  STUDENTS {
-    int id
-    string name
-  }
-  COURSES {
-    int id
-    string title
-  }
-  STUDENTS ||--|| COURSES : takes
-    `;
-
-    mermaidDiv.innerHTML = `
-      <h2>Modelo Entidad-Relación — Esquema: 
-        <span style="color:#00ff99">${schemaName}</span>
-      </h2>
-      <div id="mermaidDiagram"></div>
-    `;
-
-    try {
-      const { svg } = await mermaid.render('er-diagram', diagram);
-      document.getElementById('mermaidDiagram').innerHTML = svg;
-    } catch (error) {
-      console.error("Error rendering Mermaid diagram:", error);
-      mermaidDiv.innerHTML += `<p>Error al renderizar diagrama</p>`;
-    }
-  },
-
   showSQLExample: function () {
     const sqlDiv = document.getElementById('sqlOutput');
     sqlDiv.innerHTML = `
       <h2>Resultado de Query SQL</h2>
       <pre>
-SELECT DISTINCT TOP (10)
-  producto,
-  COUNT(DISTINCT cliente_id),
-  SUM(total)
-FROM ventas;
-
--- 💡 Tip: Click derecho en expresiones para agregar DISTINCT o TOP
+-- 💡 Tip: Usa el botón "Ejecutar" para enviar la query al servidor
       </pre>
     `;
   }

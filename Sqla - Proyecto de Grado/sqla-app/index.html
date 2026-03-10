@@ -20,7 +20,6 @@
       </div>
       <p>Aplicativo para el aprendizaje de SQL mediante programación por bloques</p>
 
-      <!-- Botón Comenzar (manteniendo su estilo original) -->
       <button id="startBtn" data-bs-toggle="modal" data-bs-target="#sessionModal">
         Comenzar
       </button>
@@ -38,7 +37,7 @@
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
-          <!-- Pestañas (tabs) -->
+          <!-- Pestañas -->
           <ul class="nav nav-tabs mb-4" id="sessionTabs" role="tablist">
             <li class="nav-item" role="presentation">
               <button class="nav-link active" id="existing-tab" data-bs-toggle="tab" data-bs-target="#existing"
@@ -59,15 +58,15 @@
             <!-- Pestaña: Sesión Existente -->
             <div class="tab-pane fade show active" id="existing" role="tabpanel" aria-labelledby="existing-tab">
               <div class="mb-3">
-                <label for="existingSessionInput" class="form-label">Número de Sesión</label>
+                <label for="existingSessionInput" class="form-label">UUID de Sesión</label>
                 <div class="input-group">
                   <span class="input-group-text bg-transparent text-white border-white">
                     <i class="bi bi-key"></i>
                   </span>
                   <input type="text" class="form-control bg-transparent text-white border-white"
-                    id="existingSessionInput" placeholder="Ej: SES-1234-15">
+                    id="existingSessionInput" placeholder="Ej: 550e8400-e29b-41d4-a716-446655440000">
                 </div>
-                <div class="form-text text-white-50">Ingresa el número de sesión que ya tienes</div>
+                <div class="form-text text-white-50">Ingresa el UUID de la sesión que ya tienes</div>
               </div>
             </div>
 
@@ -78,18 +77,22 @@
                 <div class="d-flex align-items-center gap-2">
                   <div class="flex-grow-1">
                     <div class="new-session-preview" id="newSessionPreview">
-                      SES-XXXX-XX
+                      —
                     </div>
                   </div>
                   <button class="btn btn-outline-light" type="button" id="generateSessionBtn">
                     <i class="bi bi-arrow-repeat"></i> Generar
                   </button>
                 </div>
-                <div class="form-text text-white-50">Se generará automáticamente un número de sesión único</div>
+                <div class="form-text text-white-50">Se creará un schema aislado exclusivo para tu sesión</div>
               </div>
             </div>
           </div>
+
+          <!-- Área de mensajes de error/info -->
+          <div id="sessionFeedback" style="margin-top: 12px; display: none;"></div>
         </div>
+
         <div class="modal-footer">
           <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">
             <i class="bi bi-x-circle me-2"></i>Cancelar
@@ -110,80 +113,130 @@
 
   <script type="module">
     import { loadPartials } from '/src/js/utils/loadPartials.js';
+    import { apiService } from '/src/js/services/apiService.js';
 
     document.addEventListener('DOMContentLoaded', async () => {
       await loadPartials({ footer: true });
 
-      // Elementos del modal
       const sessionModal = document.getElementById('sessionModal');
-      const existingTab = document.getElementById('existing-tab');
-      const newTab = document.getElementById('new-tab');
       const existingInput = document.getElementById('existingSessionInput');
       const generateBtn = document.getElementById('generateSessionBtn');
       const newSessionPreview = document.getElementById('newSessionPreview');
       const continueBtn = document.getElementById('continueBtn');
+      const feedbackDiv = document.getElementById('sessionFeedback');
 
-      let currentSessionNumber = null;
+      // UUID generado listo para usar (se crea al pulsar "Generar")
+      let pendingSessionReady = false;
 
-      // Función para generar número de sesión aleatorio
-      function generateSessionNumber() {
-        const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
-        const day = new Date().getDate().toString().padStart(2, '0');
-        return `SES-${random}-${day}`;
+      // ── Helpers ────────────────────────────────────────────────
+      function showFeedback(message, type = 'danger') {
+        feedbackDiv.style.display = 'block';
+        feedbackDiv.className = `alert alert-${type} py-2`;
+        feedbackDiv.textContent = message;
       }
 
-      // Generar sesión inicial para la pestaña "Nueva"
-      if (newSessionPreview) {
-        newSessionPreview.textContent = generateSessionNumber();
+      function clearFeedback() {
+        feedbackDiv.style.display = 'none';
+        feedbackDiv.textContent = '';
       }
 
-      // Botón "Generar" en nueva sesión
-      if (generateBtn) {
-        generateBtn.addEventListener('click', () => {
-          newSessionPreview.textContent = generateSessionNumber();
-        });
+      function setContinueLoading(loading) {
+        continueBtn.disabled = loading;
+        continueBtn.innerHTML = loading
+          ? '<span class="spinner-border spinner-border-sm me-2"></span>Cargando...'
+          : '<i class="bi bi-arrow-right-circle me-2"></i>Continuar';
       }
 
-      // Botón "Continuar"
-      continueBtn.addEventListener('click', () => {
-        // Determinar qué pestaña está activa
+      function setGenerateLoading(loading) {
+        generateBtn.disabled = loading;
+        generateBtn.innerHTML = loading
+          ? '<span class="spinner-border spinner-border-sm"></span>'
+          : '<i class="bi bi-arrow-repeat"></i> Generar';
+      }
+
+      // ── Botón "Generar" → llama al backend y crea sesión real ──
+      generateBtn.addEventListener('click', async () => {
+        clearFeedback();
+        pendingSessionReady = false;
+        newSessionPreview.textContent = '⏳ Creando sesión...';
+        setGenerateLoading(true);
+
+        try {
+          const data = await apiService.createSession();
+
+          if (data.ok) {
+            pendingSessionReady = true;
+            newSessionPreview.textContent = data.sessionId;
+            newSessionPreview.title = `Schema: ${data.schemaName}`;
+            showFeedback(`✅ Sesión creada. Schema: ${data.schemaName}`, 'success');
+          } else {
+            newSessionPreview.textContent = '—';
+            showFeedback('Error al crear la sesión: ' + (data.error || 'error desconocido'));
+          }
+        } catch (err) {
+          newSessionPreview.textContent = '—';
+          showFeedback('No se pudo conectar al servidor. ¿Está corriendo el backend?');
+        } finally {
+          setGenerateLoading(false);
+        }
+      });
+
+      // Auto-generar al cambiar a la pestaña "Nueva Sesión"
+      document.getElementById('new-tab').addEventListener('shown.bs.tab', () => {
+        if (!pendingSessionReady) {
+          generateBtn.click();
+        }
+      });
+
+      // ── Botón "Continuar" ──────────────────────────────────────
+      continueBtn.addEventListener('click', async () => {
+        clearFeedback();
         const isExistingTab = document.getElementById('existing-tab').classList.contains('active');
 
         if (isExistingTab) {
-          // Validar sesión existente
-          const sessionValue = existingInput.value.trim();
-          if (!sessionValue) {
-            alert('Por favor ingresa un número de sesión');
+          // Cargar sesión existente por UUID
+          const uuid = existingInput.value.trim();
+          if (!uuid) {
+            showFeedback('Por favor ingresa un UUID de sesión.');
             return;
           }
-          // Validación simple: que empiece con SES-
-          if (!sessionValue.startsWith('SES-')) {
-            alert('El número de sesión debe comenzar con SES- (ej: SES-1234-15)');
-            return;
+
+          setContinueLoading(true);
+          try {
+            const data = await apiService.loadSession(uuid);
+
+            if (!data.ok) {
+              showFeedback('Sesión no encontrada. Verifica el UUID e intenta de nuevo.');
+              return;
+            }
+
+            // Sesión válida → ir a la app
+            bootstrap.Modal.getInstance(sessionModal)?.hide();
+            setTimeout(() => { window.location.href = '/app.html'; }, 300);
+
+          } catch (err) {
+            showFeedback('Error de conexión: ' + err.message);
+          } finally {
+            setContinueLoading(false);
           }
-          currentSessionNumber = sessionValue;
+
         } else {
-          // Usar la sesión generada
-          currentSessionNumber = newSessionPreview.textContent;
+          // Nueva sesión (ya creada al pulsar Generar)
+          if (!pendingSessionReady) {
+            showFeedback('Primero genera una sesión con el botón "Generar".');
+            return;
+          }
+
+          // La sesión ya está guardada en apiService y localStorage
+          bootstrap.Modal.getInstance(sessionModal)?.hide();
+          setTimeout(() => { window.location.href = '/app.html'; }, 300);
         }
-
-        // Guardar en localStorage (provisional)
-        localStorage.setItem('currentSession', currentSessionNumber);
-
-        // Cerrar modal y redirigir
-        const modal = bootstrap.Modal.getInstance(sessionModal);
-        modal.hide();
-
-        // Pequeña pausa para que se cierre el modal y luego redirigir
-        setTimeout(() => {
-          window.location.href = '/app.html';
-        }, 300);
       });
 
-      // Si ya hay una sesión guardada, precargarla (opcional)
-      const savedSession = localStorage.getItem('currentSession');
-      if (savedSession && existingInput) {
-        existingInput.value = savedSession;
+      // Precargar UUID guardado si existe
+      const storedId = localStorage.getItem('sqlSessionId');
+      if (storedId && existingInput) {
+        existingInput.value = storedId;
       }
     });
   </script>
