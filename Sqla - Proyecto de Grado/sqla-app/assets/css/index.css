@@ -72,23 +72,24 @@ button:hover {
   bottom: 0;
   left: 0;
   width: 100%;
-  height: 32px; /* más delgado */
-  background: linear-gradient(
-    to right,
-    rgba(80, 40, 120, 0.22),
-    rgba(100, 48, 160, 0.22),
-    rgba(142, 68, 173, 0.22)
-  );
+  height: 32px;
+  /* más delgado */
+  background: linear-gradient(to right,
+      rgba(80, 40, 120, 0.22),
+      rgba(100, 48, 160, 0.22),
+      rgba(142, 68, 173, 0.22));
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   color: #f2f2f2;
-  font-size: 0.72rem; /* 🔹 más pequeña */
+  font-size: 0.72rem;
+  /* 🔹 más pequeña */
   display: flex;
   align-items: center;
   justify-content: center;
   text-align: center;
   line-height: 1;
-  font-weight: 300; /* más ligera */
+  font-weight: 300;
+  /* más ligera */
   letter-spacing: 0.2px;
   box-shadow: 0 -1px 4px rgba(0, 0, 0, 0.2);
   z-index: 1000;
@@ -99,5 +100,131 @@ button:hover {
   margin: 0;
   padding: 0;
   opacity: 0.85;
+  font-size: inherit;
 }
 
+
+/* Estilos para el modal de sesión */
+.glass-modal {
+  background: rgba(20, 20, 30, 0.95);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  border-radius: 16px;
+}
+
+.glass-modal .modal-header {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.glass-modal .modal-footer {
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.glass-modal .modal-title {
+  color: white;
+  font-weight: 600;
+}
+
+.glass-modal .btn-close {
+  filter: invert(1) grayscale(100%) brightness(200%);
+}
+
+/* Pestañas (tabs) */
+.glass-modal .nav-tabs {
+  border-bottom-color: rgba(255, 255, 255, 0.2);
+}
+
+.glass-modal .nav-tabs .nav-link {
+  color: rgba(255, 255, 255, 0.7);
+  border: none;
+  background: transparent;
+  font-weight: 500;
+  padding: 10px 20px;
+  transition: all 0.2s;
+}
+
+.glass-modal .nav-tabs .nav-link:hover {
+  color: white;
+  border-color: transparent;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.glass-modal .nav-tabs .nav-link.active {
+  color: white;
+  background: rgba(255, 255, 255, 0.2);
+  border-bottom: 3px solid #7a5cff;
+}
+
+/* Inputs */
+.glass-modal .form-control {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: white;
+  padding: 12px;
+}
+
+.glass-modal .form-control:focus {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: #7a5cff;
+  box-shadow: 0 0 0 0.25rem rgba(122, 92, 255, 0.25);
+  color: white;
+}
+
+.glass-modal .form-control::placeholder {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.glass-modal .input-group-text {
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: white;
+}
+
+/* Preview de nueva sesión */
+.new-session-preview {
+  background: rgba(0, 0, 0, 0.3);
+  border: 2px dashed rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-family: "Fira Code", monospace;
+  font-size: 1.2rem;
+  color: #00ff99;
+  text-align: center;
+  letter-spacing: 1px;
+}
+
+/* Botones */
+.glass-modal .btn-primary {
+  background: #7a5cff;
+  border: none;
+  padding: 10px 24px;
+  font-weight: 500;
+}
+
+.glass-modal .btn-primary:hover {
+  background: #9b7dff;
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(122, 92, 255, 0.4);
+}
+
+.glass-modal .btn-outline-light {
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: white;
+  padding: 10px 24px;
+  font-weight: 500;
+}
+
+.glass-modal .btn-outline-light:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: white;
+  transform: translateY(-2px);
+}
+
+/* Texto de ayuda */
+.glass-modal .form-text {
+  color: rgba(255, 255, 255, 0.5) !important;
+  font-size: 0.85rem;
+  margin-top: 6px;
+}

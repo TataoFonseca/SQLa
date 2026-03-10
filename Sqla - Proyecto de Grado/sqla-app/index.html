@@ -5,6 +5,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SQL por Bloques</title>
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Bootstrap Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
   <link rel="stylesheet" href="../assets/css/index.css">
 </head>
 
@@ -15,21 +19,172 @@
         <img src="/logo.png" alt="Logo">
       </div>
       <p>Aplicativo para el aprendizaje de SQL mediante programación por bloques</p>
-      <button id="startBtn">Comenzar</button>
+
+      <!-- Botón Comenzar (manteniendo su estilo original) -->
+      <button id="startBtn" data-bs-toggle="modal" data-bs-target="#sessionModal">
+        Comenzar
+      </button>
+    </div>
+  </div>
+
+  <!-- MODAL DE SESIÓN -->
+  <div class="modal fade" id="sessionModal" tabindex="-1" aria-labelledby="sessionModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content glass-modal">
+        <div class="modal-header">
+          <h5 class="modal-title" id="sessionModalLabel">
+            <i class="bi bi-key me-2"></i>Gestión de Sesión
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <!-- Pestañas (tabs) -->
+          <ul class="nav nav-tabs mb-4" id="sessionTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+              <button class="nav-link active" id="existing-tab" data-bs-toggle="tab" data-bs-target="#existing"
+                type="button" role="tab" aria-controls="existing" aria-selected="true">
+                <i class="bi bi-box-arrow-in-right me-2"></i>Sesión Existente
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="new-tab" data-bs-toggle="tab" data-bs-target="#new" type="button" role="tab"
+                aria-controls="new" aria-selected="false">
+                <i class="bi bi-plus-circle me-2"></i>Nueva Sesión
+              </button>
+            </li>
+          </ul>
+
+          <!-- Contenido de las pestañas -->
+          <div class="tab-content" id="sessionTabsContent">
+            <!-- Pestaña: Sesión Existente -->
+            <div class="tab-pane fade show active" id="existing" role="tabpanel" aria-labelledby="existing-tab">
+              <div class="mb-3">
+                <label for="existingSessionInput" class="form-label">Número de Sesión</label>
+                <div class="input-group">
+                  <span class="input-group-text bg-transparent text-white border-white">
+                    <i class="bi bi-key"></i>
+                  </span>
+                  <input type="text" class="form-control bg-transparent text-white border-white"
+                    id="existingSessionInput" placeholder="Ej: SES-1234-15">
+                </div>
+                <div class="form-text text-white-50">Ingresa el número de sesión que ya tienes</div>
+              </div>
+            </div>
+
+            <!-- Pestaña: Nueva Sesión -->
+            <div class="tab-pane fade" id="new" role="tabpanel" aria-labelledby="new-tab">
+              <div class="mb-3">
+                <label class="form-label">Nueva Sesión</label>
+                <div class="d-flex align-items-center gap-2">
+                  <div class="flex-grow-1">
+                    <div class="new-session-preview" id="newSessionPreview">
+                      SES-XXXX-XX
+                    </div>
+                  </div>
+                  <button class="btn btn-outline-light" type="button" id="generateSessionBtn">
+                    <i class="bi bi-arrow-repeat"></i> Generar
+                  </button>
+                </div>
+                <div class="form-text text-white-50">Se generará automáticamente un número de sesión único</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">
+            <i class="bi bi-x-circle me-2"></i>Cancelar
+          </button>
+          <button type="button" class="btn btn-primary" id="continueBtn">
+            <i class="bi bi-arrow-right-circle me-2"></i>Continuar
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 
   <!-- FOOTER -->
   <div id="footer-container"></div>
 
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+
   <script type="module">
     import { loadPartials } from '/src/js/utils/loadPartials.js';
 
     document.addEventListener('DOMContentLoaded', async () => {
       await loadPartials({ footer: true });
-      document.getElementById('startBtn').addEventListener('click', () => {
-        window.location.href = '/app.html';
+
+      // Elementos del modal
+      const sessionModal = document.getElementById('sessionModal');
+      const existingTab = document.getElementById('existing-tab');
+      const newTab = document.getElementById('new-tab');
+      const existingInput = document.getElementById('existingSessionInput');
+      const generateBtn = document.getElementById('generateSessionBtn');
+      const newSessionPreview = document.getElementById('newSessionPreview');
+      const continueBtn = document.getElementById('continueBtn');
+
+      let currentSessionNumber = null;
+
+      // Función para generar número de sesión aleatorio
+      function generateSessionNumber() {
+        const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+        const day = new Date().getDate().toString().padStart(2, '0');
+        return `SES-${random}-${day}`;
+      }
+
+      // Generar sesión inicial para la pestaña "Nueva"
+      if (newSessionPreview) {
+        newSessionPreview.textContent = generateSessionNumber();
+      }
+
+      // Botón "Generar" en nueva sesión
+      if (generateBtn) {
+        generateBtn.addEventListener('click', () => {
+          newSessionPreview.textContent = generateSessionNumber();
+        });
+      }
+
+      // Botón "Continuar"
+      continueBtn.addEventListener('click', () => {
+        // Determinar qué pestaña está activa
+        const isExistingTab = document.getElementById('existing-tab').classList.contains('active');
+
+        if (isExistingTab) {
+          // Validar sesión existente
+          const sessionValue = existingInput.value.trim();
+          if (!sessionValue) {
+            alert('Por favor ingresa un número de sesión');
+            return;
+          }
+          // Validación simple: que empiece con SES-
+          if (!sessionValue.startsWith('SES-')) {
+            alert('El número de sesión debe comenzar con SES- (ej: SES-1234-15)');
+            return;
+          }
+          currentSessionNumber = sessionValue;
+        } else {
+          // Usar la sesión generada
+          currentSessionNumber = newSessionPreview.textContent;
+        }
+
+        // Guardar en localStorage (provisional)
+        localStorage.setItem('currentSession', currentSessionNumber);
+
+        // Cerrar modal y redirigir
+        const modal = bootstrap.Modal.getInstance(sessionModal);
+        modal.hide();
+
+        // Pequeña pausa para que se cierre el modal y luego redirigir
+        setTimeout(() => {
+          window.location.href = '/app.html';
+        }, 300);
       });
+
+      // Si ya hay una sesión guardada, precargarla (opcional)
+      const savedSession = localStorage.getItem('currentSession');
+      if (savedSession && existingInput) {
+        existingInput.value = savedSession;
+      }
     });
   </script>
 </body>

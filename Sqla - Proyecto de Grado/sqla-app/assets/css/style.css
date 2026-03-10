@@ -1,11 +1,10 @@
-/* Reset básico */
+/* Reset básico y estilos generales */
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
-/* Body con gradiente y fondo */
 body {
   font-family: "Poppins", sans-serif;
   background: linear-gradient(rgba(50, 0, 100, 0.3), rgba(100, 0, 150, 0.3)), url('/background.png');
@@ -18,40 +17,281 @@ body {
   justify-content: center;
   padding: 10px;
   overflow: hidden;
+  padding-top: 45px;
+  padding-bottom: 50px;
 }
 
-/* Container principal */
+/* HEADER (solo logo) */
+.app-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 50px;
+  background: linear-gradient(to right,
+      rgba(142, 68, 173, 0.30),
+      rgba(100, 48, 160, 0.30),
+      rgba(80, 40, 120, 0.30));
+  backdrop-filter: blur(8px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  z-index: 1060;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.logo-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
+
+.app-logo {
+  height: 30px;
+  filter: drop-shadow(0 0 6px rgba(0, 0, 0, 0.4));
+  transition: transform 0.2s ease;
+  cursor: pointer;
+}
+
+.app-logo:hover {
+  transform: scale(1.05);
+}
+
+/* ÁREA DE CONTROLES */
+.controls-area {
+  margin-bottom: 8px;
+  /* Reducido de 15px */
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  position: relative;
+  z-index: 1050;
+}
+
+/* Botón de menú (estilo glass) */
+.menu-toggle-btn {
+  width: 35px;
+  height: 35px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: all 0.2s;
+  z-index: 1060;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.menu-toggle-btn:hover {
+  background: rgba(255, 255, 255, 0.25);
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.menu-toggle-btn i {
+  color: white;
+  font-size: 1.5rem;
+  line-height: 1;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+/* MENÚ HORIZONTAL DESPLEGABLE */
+.horizontal-menu {
+  display: flex;
+  gap: 8px;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateX(-20px);
+  transition: opacity 0.3s ease, visibility 0.3s ease, transform 0.3s ease;
+  pointer-events: none;
+  position: relative;
+  z-index: 1050;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.horizontal-menu.show {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(0);
+  pointer-events: all;
+}
+
+/* Estilo de los items del menú */
+.menu-item {
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: white;
+  padding: 6px 14px;
+  border-radius: 30px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: all 0.2s;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  cursor: pointer;
+  font-family: "Poppins", sans-serif;
+}
+
+.menu-item:hover {
+  background: rgba(255, 255, 255, 0.25);
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+/* Item especial para el campo de sesión */
+.session-menu-item {
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 30px;
+  padding: 0 0 0 12px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  display: flex;
+  align-items: center;
+}
+
+.session-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.session-label {
+  color: white;
+  font-size: 0.85rem;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+}
+
+.session-password-wrapper {
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+
+.session-input {
+  background: transparent;
+  border: none;
+  color: white;
+  font-family: "Fira Code", monospace;
+  font-size: 0.85rem;
+  font-weight: 500;
+  padding: 6px 8px;
+  width: 130px;
+  transition: all 0.2s;
+  letter-spacing: 2px;
+  opacity: 1;
+}
+
+.session-input:focus {
+  outline: none;
+}
+
+.session-input[type="text"] {
+  letter-spacing: normal;
+}
+
+.session-toggle-btn {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
+  padding: 0 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: color 0.2s;
+  height: 100%;
+}
+
+.session-toggle-btn:hover {
+  color: white;
+}
+
+.session-toggle-btn i {
+  font-size: 1.2rem;
+}
+
+/* Dropdown personalizado */
+.dropdown-menu {
+  background-color: rgba(30, 30, 30, 0.95);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  margin-top: 8px;
+  padding: 8px 0;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+  z-index: 1070 !important;
+}
+
+.dropdown-item {
+  color: white;
+  padding: 10px 20px;
+  transition: background 0.2s;
+}
+
+.dropdown-item:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+/* FOOTER */
+.app-footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 32px;
+  background: linear-gradient(to right,
+      rgba(80, 40, 120, 0.22),
+      rgba(100, 48, 160, 0.22),
+      rgba(142, 68, 173, 0.22));
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: #f2f2f2;
+  font-size: 0.72rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  line-height: 1;
+  font-weight: 300;
+  letter-spacing: 0.2px;
+  box-shadow: 0 -1px 4px rgba(0, 0, 0, 0.2);
+  z-index: 1000;
+  user-select: none;
+}
+
+.app-footer p {
+  margin: 0;
+  padding: 0;
+  opacity: 0.85;
+  font-size: inherit;
+}
+
+/* LAYOUT PRINCIPAL */
 .app-container {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: calc(100vh - 120px);
   width: 100%;
   padding: 10px;
   box-sizing: border-box;
+  position: relative;
 }
 
-.controls {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 10px;
-}
-
-.controls button {
-  padding: 10px 20px;
-  background: linear-gradient(to right, #6a11cb, #2575fc);
-  border: none;
-  border-radius: 6px;
-  color: white;
-  cursor: pointer;
-  font-size: 1rem;
-  transition: opacity 0.3s;
-}
-
-.controls button:hover {
-  opacity: 0.85;
-}
-
-/* Layout principal: Blockly a la izquierda, ERD a la derecha */
 .main-layout {
   display: flex;
   flex-direction: row;
@@ -59,22 +299,31 @@ body {
   flex: 1 1 auto;
   min-height: 300px;
   align-items: stretch;
-  /* fuerza que los hijos tengan la misma altura */
+}
+
+/* Columna Izquierda (engloba Blockly y SQL Output) */
+.left-column {
+  flex: 2 1 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  /* Separación entre Blockly y la consola SQL */
 }
 
 /* Blockly container */
 .blockly-container {
-  flex: 2 1 0;
+  flex-grow: 1;
   height: auto;
-  margin: 0;
+  min-height: 200px;
   border: 1px solid rgba(255, 255, 255, 0.25);
-  box-sizing: border-box;
   border-radius: 12px;
   overflow: hidden;
   background: rgba(0, 0, 0, 0.45);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  z-index: 1;
+  position: relative;
 }
 
 /* Fondo del área de trabajo de Blockly */
@@ -96,177 +345,20 @@ body {
   fill: rgba(0, 0, 0, 0.2) !important;
 }
 
-
-/* ERD container */
-.mermaid-container {
-  flex: 1 1 0;
-  height: 100%;
-  border: 1px solid #444;
-  padding: 10px;
-  box-sizing: border-box;
-  overflow: auto;
-}
-
-
-/* SQL Output debajo de Blockly */
-.sql-output {
-  margin-top: 10px;
-  width: 100%;
-  height: 20vh;
-  border: 1px solid #444;
-  padding: 10px;
-  box-sizing: border-box;
-  overflow: auto;
-  background-color: rgba(0, 0, 0, 0.2);
-  border-radius: 6px;
-}
-
-/* Responsive: tablet */
-@media (max-width: 1024px) {
-  .main-layout {
-    flex-direction: column;
-  }
-
-  .blockly-container,
-  .mermaid-container {
-    width: 100%;
-    height: 40vh;
-
-  }
-
-  .sql-output {
-    height: 20vh;
-  }
-}
-
-/* Responsive: móvil */
-@media (max-width: 600px) {
-  .controls {
-    flex-direction: column;
-    gap: 5px;
-  }
-
-  .blockly-container,
-  .mermaid-container {
-    height: 30vh;
-  }
-
-  .sql-output {
-    height: 15vh;
-  }
-}
-
-/* Css combobox */
-
-/* === CONTROLES SUPERIORES === */
-.controls {
-  display: flex;
-  gap: 10px;
-  justify-content: center;
-  margin-bottom: 15px;
-}
-
-.controls button {
-  background-color: #2b2d42;
-  color: #fff;
-  border: none;
-  border-radius: 8px;
-  padding: 8px 16px;
-  cursor: pointer;
-  font-size: 14px;
-  transition: background-color 0.2s, transform 0.1s;
-}
-
-.controls button:hover {
-  background-color: #3c3f58;
-  transform: scale(1.03);
-}
-
-/* === COMBOBOX GENERAL === */
-.combobox-container {
-  position: relative;
-  display: inline-block;
-}
-
-.combobox-menu {
-  display: none;
-  position: absolute;
-  top: 110%;
-  left: 0;
-  background-color: #fff;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-  min-width: 200px;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-  z-index: 10;
-}
-
-.combobox-menu.active {
-  display: block;
-}
-
-.combobox-menu ul {
-  list-style: none;
-  margin: 0;
-  padding: 6px 0;
-}
-
-.combobox-menu li {
-  padding: 8px 12px;
-  cursor: pointer;
-  font-size: 14px;
-  color: #333;
-  transition: background 0.2s;
-}
-
-.combobox-menu li:hover {
-  background-color: #f2f2f2;
-}
-
-/* === SEPARADOR VISUAL ENTRE COMBOS === */
-.combobox-separator {
-  width: 1px;
-  background-color: #ccc;
-  margin: 0 6px;
-}
-
-/* Mermaid y SQL output */
-
+/* Mermaid container */
 .mermaid-container {
   flex: 1 1 0;
   height: 100%;
   padding: 16px;
   border-radius: 12px;
   background: rgba(0, 0, 0, 0.45);
-  /* mismo que SQL Output */
   color: #00ff99;
-  /* texto verde brillante */
   font-family: "Fira Code", monospace;
   border: 1px solid rgba(255, 255, 255, 0.25);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   box-sizing: border-box;
   overflow: auto;
-}
-
-.sql-output {
-  background: rgba(0, 0, 0, 0.45);
-  color: #00ff99;
-  font-family: "Fira Code", monospace;
-  border-radius: 12px;
-  padding: 16px;
-  margin-top: 10px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  overflow: auto;
-}
-
-.sql-output h2 {
-  color: #fff;
-  margin-bottom: 8px;
 }
 
 .mermaid-container h2 {
@@ -281,74 +373,417 @@ body {
   font-family: "Fira Code", monospace;
 }
 
-.app-header {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 60px;
-  background: linear-gradient(to right,
-      rgba(142, 68, 173, 0.30),
-      rgba(100, 48, 160, 0.30),
-      rgba(80, 40, 120, 0.30));
-  backdrop-filter: blur(8px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
-  z-index: 1000;
+/* SQL Output */
+.sql-output {
+  background: rgba(0, 0, 0, 0.45);
+  color: #00ff99;
+  font-family: "Fira Code", monospace;
+  border-radius: 12px;
+  padding: 10px 16px;
+  margin-top: 5px;
+  /* Espacio entre Blockly y SQL Output */
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  overflow: auto;
+  height: 200px;
+  /* Mucho más pequeño*/
+  flex-shrink: 0;
 }
 
-.app-logo {
-  height: 40px;
-  filter: drop-shadow(0 0 6px rgba(0, 0, 0, 0.4));
-  transition: transform 0.2s ease;
+.sql-output h2 {
+  color: #fff;
+  margin-bottom: 8px;
 }
 
-.app-logo:hover {
-  transform: scale(1.05);
-}
-
-/* FOOTER con degradado translúcido */
-.app-footer {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  height: 40px;
-  background: linear-gradient(to right,
-      rgba(80, 40, 120, 0.30),
-      rgba(100, 48, 160, 0.30),
-      rgba(142, 68, 173, 0.30));
-  backdrop-filter: blur(8px);
-  color: white;
-  text-align: center;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.9rem;
-  box-shadow: 0 -2px 6px rgba(0, 0, 0, 0.25);
-  z-index: 1000;
-}
-
-/* ESPACIADO para que el contenido no quede debajo del header/footer */
-body {
+.sql-output pre {
+  color: #00ff99;
+  font-family: "Fira Code", monospace;
   margin: 0;
-  padding-top: 70px;
-  /* espacio debajo del header */
-  padding-bottom: 50px;
-  /* espacio arriba del footer */
-  overflow: hidden;
-  /* sin scroll general */
+  white-space: pre-wrap;
 }
 
-/* Ajuste visual del contenedor principal */
-.app-container {
+/* Responsive */
+@media (max-width: 1024px) {
+  .main-layout {
+    flex-direction: column;
+  }
+
+  .blockly-container,
+  .mermaid-container {
+    width: 100%;
+    height: 40vh;
+  }
+
+  .sql-output {
+    height: 20vh;
+  }
+}
+
+@media (max-width: 992px) {
+  .session-input {
+    width: 100px;
+  }
+}
+
+@media (max-width: 768px) {
+  .horizontal-menu {
+    flex-direction: column;
+    align-items: flex-start;
+    background: rgba(20, 20, 20, 0.95);
+    backdrop-filter: blur(10px);
+    padding: 15px;
+    border-radius: 12px;
+    position: absolute;
+    top: 60px;
+    left: 0;
+    min-width: 280px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+  }
+
+  .menu-item,
+  .session-menu-item {
+    width: 100%;
+  }
+
+  .session-field {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .session-input {
+    width: 150px;
+  }
+
+  .controls-area {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 600px) {
+
+  .blockly-container,
+  .mermaid-container {
+    height: 30vh;
+  }
+
+  .sql-output {
+    height: 15vh;
+  }
+
+  .app-header {
+    height: 60px;
+  }
+
+  .app-logo {
+    height: 35px;
+  }
+
+  body {
+    padding-top: 60px;
+  }
+}
+
+@media (max-width: 480px) {
+  .session-input {
+    width: 100px;
+    font-size: 0.8rem;
+  }
+
+  .menu-toggle-btn {
+    width: 40px;
+    height: 40px;
+  }
+
+  .menu-toggle-btn i {
+    font-size: 1.5rem;
+  }
+}
+
+/* Estilos para el toolbox de Blockly */
+.toolbox-label {
+  color: white;
+  font-weight: bold;
+  padding: 8px 16px;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  margin: 5px 0;
+}
+
+/* Ajustes para el scrollbar en general */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.4);
+}
+
+/* Botón de copiar */
+.session-copy-btn {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
+  padding: 0 4px 0 0;
   display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  height: calc(100vh - 120px);
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: color 0.2s, transform 0.2s;
+  height: 100%;
+}
+
+.session-copy-btn:hover {
+  color: white;
+  transform: scale(1.1);
+}
+
+.session-copy-btn i {
+  font-size: 1.1rem;
+}
+
+.session-copy-btn:active {
+  transform: scale(0.95);
+}
+
+/* Ajuste del ancho del input cuando hay botón de copiar */
+.session-input {
+  background: transparent;
+  border: none;
+  color: white;
+  font-family: "Fira Code", monospace;
+  font-size: 0.9rem;
+  font-weight: 500;
+  padding: 6px 4px 6px 8px;
+  width: 120px;
+  /* Un poco más pequeño para dar espacio */
+  transition: all 0.2s;
+  letter-spacing: 2px;
+}
+
+/* Ajuste responsive */
+@media (max-width: 768px) {
+  .session-input {
+    width: 130px;
+  }
+}
+
+@media (max-width: 480px) {
+  .session-input {
+    width: 110px;
+  }
+}
+
+/* ======================
+   ÁREA DE RESULTADOS
+   ====================== */
+.results-area {
+  margin-top: 15px;
   width: 100%;
-  padding: 10px;
-  box-sizing: border-box;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 12px;
+  padding: 12px;
+  backdrop-filter: blur(4px);
+}
+
+/* Barra de herramientas */
+.results-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding: 0 4px;
+}
+
+.toolbar-group {
+  display: flex;
+  gap: 8px;
+}
+
+.toolbar-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 30px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  font-size: 0.9rem;
+  font-weight: 500;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: all 0.2s;
+  cursor: pointer;
+}
+
+.toolbar-btn i {
+  font-size: 1.1rem;
+}
+
+.toolbar-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.execute-btn {
+  background: rgba(40, 167, 69, 0.3);
+  border-color: rgba(40, 167, 69, 0.5);
+}
+
+.execute-btn:hover {
+  background: rgba(40, 167, 69, 0.5);
+  border-color: rgba(40, 167, 69, 0.8);
+}
+
+.clear-btn {
+  background: rgba(220, 53, 69, 0.3);
+  border-color: rgba(220, 53, 69, 0.5);
+}
+
+.clear-btn:hover {
+  background: rgba(220, 53, 69, 0.5);
+  border-color: rgba(220, 53, 69, 0.8);
+}
+
+.view-toggle-btn {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.view-toggle-btn:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* Paneles de resultados */
+.results-panels {
+  display: flex;
+  gap: 12px;
+  min-height: 200px;
+}
+
+.table-result {
+  flex: 1;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 12px;
+  padding: 0;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.panel-header {
+  padding: 10px 16px;
+  background: rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+}
+
+.panel-header .badge {
+  background: rgba(255, 255, 255, 0.2) !important;
+  color: white;
+  font-weight: 400;
+  font-size: 0.7rem;
+  padding: 4px 8px;
+}
+
+.sql-output pre {
+  margin: 0;
+  padding: 16px;
+  color: #00ff99;
+  font-family: "Fira Code", monospace;
+  font-size: 0.9rem;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  max-height: 300px;
+  overflow: auto;
+}
+
+.table-mermaid {
+  padding: 16px;
+  max-height: 300px;
+  overflow: auto;
+  color: #00ff99;
+  font-family: "Fira Code", monospace;
+}
+
+.table-mermaid .mermaid {
+  background: transparent !important;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .results-panels {
+    flex-direction: column;
+  }
+
+  .results-toolbar {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .toolbar-group {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .toolbar-btn {
+    flex: 1;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .toolbar-group {
+    flex-direction: column;
+  }
+}
+
+/* Botón Ejecutar Glassmorphism */
+.btn-glass-play {
+  padding: 8px 24px;
+  font-weight: 600;
+  border-radius: 8px;
+  color: white;
+  background: rgba(40, 167, 69, 0.2);
+  border: 1px solid rgba(40, 167, 69, 0.4);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 4px 15px rgba(40, 167, 69, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  transition: all 0.3s ease;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-size: 0.9rem;
+}
+
+.btn-glass-play:hover {
+  background: rgba(40, 167, 69, 0.4);
+  border-color: rgba(40, 167, 69, 0.8);
+  box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  transform: translateY(-2px);
+}
+
+.btn-glass-play:active {
+  transform: translateY(1px);
+  box-shadow: 0 2px 10px rgba(40, 167, 69, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }

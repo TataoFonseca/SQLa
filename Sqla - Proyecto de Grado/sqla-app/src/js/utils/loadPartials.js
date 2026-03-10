@@ -20,6 +20,6 @@ export async function loadPartials({ header = false, footer = false } = {}) {
     }
 
   } catch (err) {
-    console.error("❌ Error al cargar partials:", err);
+    console.error("Error al cargar partials:", err);
   }
 }
