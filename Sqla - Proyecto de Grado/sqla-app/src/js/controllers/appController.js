@@ -38,13 +38,18 @@ import { registerExpressionContextMenu } from '../blocks/extensions/expressionCo
 
 import {
   // SUM_DEFINITION,
-  aggregateFunction_Sum_BlockDefinition, 
-  SUM_GENERATOR,
+  aggregateFunction_Sum_BlockDefinition, SUM_GENERATOR,
   aggregateFunction_Avg_BlockDefinition, AVG_GENERATOR,
   aggregateFunction_Count_BlockDefinition, COUNT_GENERATOR,
   aggregateFunction_Min_BlockDefinition, MIN_GENERATOR,
   aggregateFunction_Max_BlockDefinition, MAX_GENERATOR,
-  AGGREGATE_FUNCTION_ONCHANGE // Onchange compartido para todos los bloques de funciones de agregación para añadir soporte de coma dinámica
+  aggregateFunction_Sum_Having_BlockDefinition, SUM_HAVING_GENERATOR,
+  aggregateFunction_Avg_Having_BlockDefinition, AVG_HAVING_GENERATOR,
+  aggregateFunction_Count_Having_BlockDefinition, COUNT_HAVING_GENERATOR,
+  aggregateFunction_Min_Having_BlockDefinition, MIN_HAVING_GENERATOR,
+  aggregateFunction_Max_Having_BlockDefinition, MAX_HAVING_GENERATOR,
+  // AGGREGATE_FUNCTION_ONCHANGE // Onchange compartido para todos los bloques de funciones de agregación para añadir soporte de coma dinámica
+  createAggregateFunctionOnChange
 } from '../blocks/dml_aggregateFunctionsBlock.js';
 
 // EXTENSIÓN DE MENÚ CONTEXTUAL PARA FUNCIONES DE AGREGACIÓN - CAMBIÓ DE registerAggregateFunctionExpressionContextMenu a registerAggregateFunctionContextMenu
@@ -167,6 +172,8 @@ export const AppController = {
       onchange: JOIN_ONCHANGE
     };
 
+    const AGGREGATE_FUNCTION_ONCHANGE = createAggregateFunctionOnChange(Blockly);
+    
     //DML: FUNCIONES DE AGREGACIÓN (con onchange)
     Blockly.Blocks['sql_sum'] = {
       // init: function () { this.jsonInit(SUM_DEFINITION); },
@@ -198,6 +205,29 @@ export const AppController = {
       onchange: AGGREGATE_FUNCTION_ONCHANGE
     };
 
+    //DML: FUNCIONES DE AGREGACIÓN (con onchange) y sin coma dinamica para HAVING (NEXT)
+    Blockly.Blocks['sql_sum_having'] = {
+      ...aggregateFunction_Sum_Having_BlockDefinition(Blockly),
+      onchange: AGGREGATE_FUNCTION_ONCHANGE
+    };
+    Blockly.Blocks['sql_avg_having'] = {
+      ...aggregateFunction_Avg_Having_BlockDefinition(Blockly),
+      onchange: AGGREGATE_FUNCTION_ONCHANGE
+    };
+    Blockly.Blocks['sql_count_having'] = {
+      ...aggregateFunction_Count_Having_BlockDefinition(Blockly),
+      onchange: AGGREGATE_FUNCTION_ONCHANGE
+    };
+    Blockly.Blocks['sql_min_having'] = {
+      ...aggregateFunction_Min_Having_BlockDefinition(Blockly),
+      onchange: AGGREGATE_FUNCTION_ONCHANGE
+    };
+    Blockly.Blocks['sql_max_having'] = {
+      ...aggregateFunction_Max_Having_BlockDefinition(Blockly),
+      onchange: AGGREGATE_FUNCTION_ONCHANGE
+    };
+
+    // DML: GROUP BY
     Blockly.Blocks['sql_group_by'] = {
       init: function () { this.jsonInit(GROUPBY_DEFINITION); },
       onchange: GROUPBY_ONCHANGE
@@ -280,6 +310,15 @@ export const AppController = {
       return MAX_GENERATOR(block, javascriptGenerator);
     };
 
+    // Generadores para funciones de agregación en HAVING (sin coma dinámica y sin NEXT)
+    // Generadores — agregar después de los 5 existentes
+    javascriptGenerator.forBlock['sql_sum_having'] = (block) => SUM_HAVING_GENERATOR(block, javascriptGenerator);
+    javascriptGenerator.forBlock['sql_avg_having'] = (block) => AVG_HAVING_GENERATOR(block, javascriptGenerator);
+    javascriptGenerator.forBlock['sql_count_having'] = (block) => COUNT_HAVING_GENERATOR(block, javascriptGenerator);
+    javascriptGenerator.forBlock['sql_min_having'] = (block) => MIN_HAVING_GENERATOR(block, javascriptGenerator);
+    javascriptGenerator.forBlock['sql_max_having'] = (block) => MAX_HAVING_GENERATOR(block, javascriptGenerator);
+
+    // === PASO 7: GENERADORES DML GROUP BY
     javascriptGenerator.forBlock['sql_group_by'] = function (block) {
       return GROUPBY_GENERATOR(block, javascriptGenerator);
     };
