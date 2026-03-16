@@ -9,6 +9,17 @@ import mermaid from 'mermaid';
 import { CREATE_TABLE_DEFINITION, CREATE_TABLE_GENERATOR } from '../blocks/ddl_CreateTableBlock.js';
 import { COLUMN_DEFINITION, COLUMN_GENERATOR } from '../blocks/ddl_ColumnDefinitionBlock.js';
 
+// CONSTRAINTS DE COLUMNA
+import {
+  COLUMN_IDENTITY_DEFINITION,   COLUMN_IDENTITY_GENERATOR,   COLUMN_IDENTITY_ONCHANGE,
+  COLUMN_NOT_NULL_DEFINITION,   COLUMN_NOT_NULL_GENERATOR,   COLUMN_NOT_NULL_ONCHANGE,
+  COLUMN_UNIQUE_DEFINITION,     COLUMN_UNIQUE_GENERATOR,     COLUMN_UNIQUE_ONCHANGE,
+  COLUMN_DEFAULT_DEFINITION,    COLUMN_DEFAULT_GENERATOR,    COLUMN_DEFAULT_ONCHANGE,
+  COLUMN_CHECK_DEFINITION,      COLUMN_CHECK_GENERATOR,      COLUMN_CHECK_ONCHANGE,
+  COLUMN_REFERENCES_DEFINITION, COLUMN_REFERENCES_GENERATOR, COLUMN_REFERENCES_ONCHANGE,
+} from '../blocks/ddl_ColumnConstraints.js';
+
+
 // BLOQUES DML
 import { FROM_SIMPLE_DEFINITION, FROM_SIMPLE_GENERATOR } from '../blocks/dml_FromSimpleBlock.js'; // (Agregado) FROM simple sin soporte de JOINs (FromSimpleBlock.js)
 import { FROM_DEFINITION, FROM_GENERATOR } from '../blocks/dml_FromBlock.js'; // FROM con soporte de JOINs (FromBlock.js)
@@ -120,6 +131,14 @@ export const AppController = {
       CREATE_TABLE_DEFINITION,
       COLUMN_DEFINITION,
 
+      // Constraints de columna
+      COLUMN_IDENTITY_DEFINITION,
+      COLUMN_NOT_NULL_DEFINITION,
+      COLUMN_UNIQUE_DEFINITION,
+      COLUMN_DEFAULT_DEFINITION,
+      COLUMN_CHECK_DEFINITION,
+      COLUMN_REFERENCES_DEFINITION,
+
       // DML
       FROM_SIMPLE_DEFINITION, //Agregado FROM simple sin soporte de JOINs
       FROM_DEFINITION,
@@ -142,11 +161,17 @@ export const AppController = {
 
     ]);
 
-    
+    // Bloques con onchange 
+    Blockly.Blocks['sql_column_identity'].onchange    = COLUMN_IDENTITY_ONCHANGE;
+    Blockly.Blocks['sql_column_not_null'].onchange    = COLUMN_NOT_NULL_ONCHANGE;
+    Blockly.Blocks['sql_column_unique'].onchange      = COLUMN_UNIQUE_ONCHANGE;
+    Blockly.Blocks['sql_column_default'].onchange     = COLUMN_DEFAULT_ONCHANGE;
+    Blockly.Blocks['sql_column_check'].onchange       = COLUMN_CHECK_ONCHANGE;
+    Blockly.Blocks['sql_column_references'].onchange  = COLUMN_REFERENCES_ONCHANGE;
 
-    // Bloques con onchange (coma dinámica) → registro manual con Blockly.Blocks
-    //DML: EXPRESSION CON EXPRESSION_ONCHANGE (MENÚ CONTEXTUAL para DISTINCT/TOP)
-    // Actualizado para usar el patrón init en lugar de jsonInit, para poder agregar el input NEXT necesario para la coma dinámica, pero el generador y el onchange se mantienen igual
+
+    // (coma dinámica) → registro manual con Blockly.Blocks
+    // DML: EXPRESSION CON EXPRESSION_ONCHANGE (MENÚ CONTEXTUAL para DISTINCT/TOP), Actualizado para usar el patrón init en lugar de jsonInit, para poder agregar el input NEXT necesario para la coma dinámica, pero el generador y el onchange se mantienen igual
     Blockly.Blocks['sql_expression'] = {
       ...expressionBlockDefinition(Blockly),
       onchange: EXPRESSION_ONCHANGE
@@ -238,6 +263,15 @@ export const AppController = {
     javascriptGenerator.forBlock['sql_column_definition'] = function (block) {
       return COLUMN_GENERATOR(block, javascriptGenerator);
     };
+
+    // Generadores para constraints de columna
+    javascriptGenerator.forBlock['sql_column_identity']    = COLUMN_IDENTITY_GENERATOR;
+    javascriptGenerator.forBlock['sql_column_not_null']    = COLUMN_NOT_NULL_GENERATOR;
+    javascriptGenerator.forBlock['sql_column_unique']      = COLUMN_UNIQUE_GENERATOR;
+    javascriptGenerator.forBlock['sql_column_default']     = COLUMN_DEFAULT_GENERATOR;
+    javascriptGenerator.forBlock['sql_column_check']       = COLUMN_CHECK_GENERATOR;
+    javascriptGenerator.forBlock['sql_column_references']  = COLUMN_REFERENCES_GENERATOR;
+
 
     // === PASO 4: REGISTRO DE GENERADORES DML ===
     javascriptGenerator.forBlock['sql_select'] = function (block) {
