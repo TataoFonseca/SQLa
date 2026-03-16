@@ -9,7 +9,7 @@ import * as Blockly from 'blockly';
  * Registra la extensión del menú contextual para las funciones de agregación (SUM, AVG, COUNT, MIN, MAX).
  * Solo muestra la opción de DISTINCT (TOP no está permitido en agregaciones SQL)
  */
-const AGGREGATE_TYPES_NO_DISTINCT = ['sql_min', 'sql_max'];
+const AGGREGATE_TYPES_NO_DISTINCT = ['sql_min', 'sql_max', 'sql_min_having', 'sql_max_having']; // MIN y MAX no aplican DISTINCT, ni siquiera en HAVING
 const COMPARISON_TYPES = ['sql_comparison', 'sql_quantified_comparison', 'sql_membership'];
 
 function getHavingParent(block) {
@@ -47,6 +47,10 @@ export function registerAggregateFunctionContextMenu() {
       const havingParent = getHavingParent(block);
       const comparisonWrapper = getComparisonWrapper(block);
 
+      //nombre limpio sin prefijo sql_ ni sufijo _having
+      const blockLabel = block.type.replace('sql_', '').replace('_having', '').toUpperCase();
+
+
       
       // Verificar que realmente está dentro de una función de agregación
       // const isInAggregate = parentBlock && [
@@ -69,7 +73,8 @@ export function registerAggregateFunctionContextMenu() {
       // ==========================================
       if (noDistinct) {
         options.push({
-          text: '⚠️ DISTINCT no aplica para ' + block.type.replace('sql_', '').toUpperCase(),
+          // text: '⚠️ DISTINCT no aplica para ' + block.type.replace('sql_', '').toUpperCase(),
+          text: '⚠️ DISTINCT no aplica para ' + blockLabel,
           enabled: false,
           callback: function() {}
         });
