@@ -27,169 +27,149 @@ export const AGGREGATE_FUNCTION_ONCHANGE = function(event) {
   }
 };
 
-
 // ==========================================
-// SUM
+// ¡Agregado!
+// Helper interno con el nuevo diseño que incluye el campo DISTINCT y el input NEXT para encadenar agregados con coma dinámica.
+// Recibe Blockly, el label de la función (ej. 'SUM('), el tipo, el check de EXPRESSION y el tooltip.
 // ==========================================
-export const SUM_DEFINITION = {
-  "type": "sql_sum",
-  "message0": "SUM ( %1 ) %2",
-  "args0": [
-    {
-      "type": "input_value",
-      "name": "EXPRESSION",
-      "check": ["Expression", "Column", "DistinctExpression"]  // Solo DISTINCT, no TOP
-    },
+function buildAggregateInit(Blockly, label, check, tooltip) {
+  return {
+    init: function () {
+      this.appendValueInput('NEXT')
+          .setCheck(["Expression", "Column", "Aggregate", "DistinctExpression", "TopExpression"])
+          .appendField(label)
+          .appendField(
+            new Blockly.FieldLabel('DISTINCT'),
+            'DISTINCT'
+          )
+          .appendField(
+            new Blockly.FieldTextInput('columna'),
+            'COLUMN'
+          )
+          .appendField(')');
+      this.setInputsInline(false);
+      this.setOutput(true, ["Aggregate", "Expression"]);
+      this.setColour(120);
+      this.setTooltip(tooltip);
+      this.setHelpUrl('');
 
-    {
-      "type": "input_value",
-      "name": "NEXT",
-      "check": ["Expression", "Column", "Aggregate", "DistinctExpression", "TopExpression"]
+      // DISTINCT oculto por defecto
+      this.getField('DISTINCT').setVisible(false);
+
+      Blockly.Extensions.apply('aggregate_functions_context_menu', this, false);
     }
-  ],
-  "inputsInline": true,
-  "output": ["Aggregate", "Expression"],
-  "colour": 120,
-  "tooltip": "Suma de valores. Click derecho en la expresión interna para agregar DISTINCT.",
-  "helpUrl": "",
-  "extensions": ["having_expression_context_menu"]
-};
+  };
+}
+
+
+// ==========================================
+// SUM - Actualizado, ahora DISTINCT es un campo que se muestra/oculta en el mismo bloque, y se agregó el input NEXT para permitir encadenar agregados con coma dinámica
+// ==========================================
+
+
+export function aggregateFunction_Sum_BlockDefinition(Blockly) {
+  return buildAggregateInit(
+    Blockly,
+    'SUM(',["Expression", "Column", "DistinctExpression"],
+    'Suma de valores. Click derecho para agregar DISTINCT.'
+  );
+
+}
 
 export const SUM_GENERATOR = function(block, generator) {
-  const expression = generator.valueToCode(block, 'EXPRESSION', generator.ORDER_ATOMIC) || '*';
+  const distinct = block.getField('DISTINCT').isVisible() ? 'DISTINCT ' : '';
+  const column = block.getFieldValue('COLUMN');
   const next = generator.valueToCode(block, 'NEXT', generator.ORDER_ATOMIC);
-  const code = next ? 'SUM(' + expression + '), ' + next : 'SUM(' + expression + ')';
+  const code = next
+    ? 'SUM(' +distinct + column + '), ' + next
+    : 'SUM(' +distinct + column + ')';
   return [code, generator.ORDER_ATOMIC]; //cambiado de ORDER_FUNCTION_CALL a ORDER_ATOMIC para evitar paréntesis innecesarios en casos simples
 };
 
 // ==========================================
-// AVG
+// AVG - Actualizado, ahora DISTINCT es un campo que se muestra/oculta en el mismo bloque, y se agregó el input NEXT para permitir encadenar agregados con coma dinámica
 // ==========================================
-export const AVG_DEFINITION = {
-  "type": "sql_avg",
-  "message0": "AVG ( %1 ) %2",
-  "args0": [
-    {
-      "type": "input_value",
-      "name": "EXPRESSION",
-      "check": ["Expression", "Column", "DistinctExpression"]
-    },
-    {
-      "type": "input_value",
-      "name": "NEXT",
-      "check": ["Expression", "Column", "Aggregate", "DistinctExpression", "TopExpression"]
-    }
-  ],
-  "inputsInline": true,
-  "output": ["Aggregate", "Expression"],
-  "colour": 120,
-  "tooltip": "Promedio de valores. Click derecho en la expresión interna para agregar DISTINCT.",
-  "helpUrl": "",
-  "extensions": ["having_expression_context_menu"]
-};
+export function aggregateFunction_Avg_BlockDefinition(Blockly) {
+  return buildAggregateInit(
+    Blockly,
+    'AVG(',
+    ["Expression", "Column", "DistinctExpression"],
+    'Promedio de valores. Click derecho para agregar DISTINCT.'
+  );
+}
 
 export const AVG_GENERATOR = function(block, generator) {
-  const expression = generator.valueToCode(block, 'EXPRESSION', generator.ORDER_ATOMIC) || '*';
+  const distinct = block.getField('DISTINCT').isVisible() ? 'DISTINCT ' : '';
+  const column = block.getFieldValue('COLUMN');
   const next = generator.valueToCode(block, 'NEXT', generator.ORDER_ATOMIC);
-  const code = next ? 'AVG(' + expression + '), ' + next : 'AVG(' + expression + ')';
+  // const code = next ? 'AVG(' + expression + '), ' + next : 'AVG(' + expression + ')';
+  const code = next
+    ? 'AVG(' + distinct + column + '), ' + next
+    : 'AVG(' + distinct + column + ')';
   return [code, generator.ORDER_ATOMIC]; //cambiado de ORDER_FUNCTION_CALL a ORDER_ATOMIC para evitar paréntesis innecesarios en casos simples
 };
 
 // ==========================================
-// COUNT
+// COUNT - Actualizado, ahora DISTINCT es un campo que se muestra/oculta en el mismo bloque, y se agregó el input NEXT para permitir encadenar agregados con coma dinámica
 // ==========================================
-export const COUNT_DEFINITION = {
-  "type": "sql_count",
-  "message0": "COUNT ( %1 ) %2",
-  "args0": [
-    {
-      "type": "input_value",
-      "name": "EXPRESSION",
-      "check": ["Expression", "Column", "DistinctExpression"]
-    },
-    {
-      "type": "input_value",
-      "name": "NEXT",
-      "check": ["Expression", "Column", "Aggregate", "DistinctExpression", "TopExpression"]
-    }
-  ],
-  "inputsInline": true,
-  "output": ["Aggregate", "Expression"],
-  "colour": 120,
-  "tooltip": "Conteo de filas. Click derecho en la expresión interna para agregar DISTINCT.",
-  "helpUrl": "",
-  "extensions": ["having_expression_context_menu"]
-};
+export function aggregateFunction_Count_BlockDefinition(Blockly) {
+  return buildAggregateInit(
+    Blockly,
+    'COUNT(',
+    ["Expression", "Column", "DistinctExpression"],
+    'Conteo de filas. Click derecho para agregar DISTINCT.'
+  );
+}
 
 export const COUNT_GENERATOR = function(block, generator) {
-  const expression = generator.valueToCode(block, 'EXPRESSION', generator.ORDER_ATOMIC) || '*';
+  const distinct = block.getField('DISTINCT').isVisible() ? 'DISTINCT ' : '';
+  const column = block.getFieldValue('COLUMN');
   const next = generator.valueToCode(block, 'NEXT', generator.ORDER_ATOMIC);
-  const code = next ? 'COUNT(' + expression + '), ' + next : 'COUNT(' + expression + ')';
+  const code = next
+    ? 'COUNT(' + distinct + column + '), ' + next
+    : 'COUNT(' + distinct + column + ')';
   return [code, generator.ORDER_ATOMIC]; //cambiado de ORDER_FUNCTION_CALL a ORDER_ATOMIC para evitar paréntesis innecesarios en casos simples
 };
 
 // ==========================================
-// MIN
+// MIN - Actualizado, ahora DISTINCT es un campo que se muestra/oculta en el mismo bloque, y se agregó el input NEXT para permitir encadenar agregados con coma dinámica
 // ==========================================
-export const MIN_DEFINITION = {
-  "type": "sql_min",
-  "message0": "MIN ( %1 ) %2",
-  "args0": [
-    {
-      "type": "input_value",
-      "name": "EXPRESSION",
-      "check": ["Expression", "Column"]  // MIN/MAX no necesitan DISTINCT
-    },
-    {
-      "type": "input_value",
-      "name": "NEXT",
-      "check": ["Expression", "Column", "Aggregate", "DistinctExpression", "TopExpression"]
-    }
-  ],
-  "inputsInline": true,
-  "output": ["Aggregate", "Expression"],
-  "colour": 120,
-  "tooltip": "Valor mínimo.",
-  "helpUrl": "",
-  "extensions": ["having_expression_context_menu"]
-};
+export function aggregateFunction_Min_BlockDefinition(Blockly) {
+  return buildAggregateInit(
+    Blockly,
+    'MIN(',
+    ["Expression", "Column"],
+    'Valor mínimo.'
+  );
+
+}
 
 export const MIN_GENERATOR = function(block, generator) {
-  const expression = generator.valueToCode(block, 'EXPRESSION', generator.ORDER_ATOMIC) || '*';
+  const column = block.getFieldValue('COLUMN');
   const next = generator.valueToCode(block, 'NEXT', generator.ORDER_ATOMIC);
-  const code = next ? 'MIN(' + expression + '), ' + next : 'MIN(' + expression + ')';
+  const code = next
+    ? 'MIN(' + column + '), ' + next
+    : 'MIN(' + column + ')';
   return [code, generator.ORDER_ATOMIC]; //cambiado de ORDER_FUNCTION_CALL a ORDER_ATOMIC para evitar paréntesis innecesarios en casos simples
 };
 
 // ==========================================
-// MAX
-// ==========================================
-export const MAX_DEFINITION = {
-  "type": "sql_max",
-  "message0": "MAX ( %1 ) %2",
-  "args0": [
-    {
-      "type": "input_value",
-      "name": "EXPRESSION",
-      "check": ["Expression", "Column"]
-    },
-    {
-      "type": "input_value",
-      "name": "NEXT",
-      "check": ["Expression", "Column", "Aggregate", "DistinctExpression", "TopExpression"]
-    }
-  ],
-  "inputsInline": true,
-  "output": ["Aggregate", "Expression"],
-  "colour": 120,
-  "tooltip": "Valor máximo.",
-  "helpUrl": "",
-  "extensions": ["having_expression_context_menu"]
-};
+// MAX (no acepta DISTINCT) - Actualizado, ahora DISTINCT es un campo que se muestra/oculta en el mismo bloque, y se agregó el input NEXT para permitir encadenar agregados con coma dinámica
+// ==========================
+export function aggregateFunction_Max_BlockDefinition(Blockly) {
+  return buildAggregateInit(
+    Blockly,
+    'MAX(',
+    ["Expression", "Column"],
+    'Valor máximo.'
+  );
+}
 
 export const MAX_GENERATOR = function(block, generator) {
-  const expression = generator.valueToCode(block, 'EXPRESSION', generator.ORDER_ATOMIC) || '*';
+  const column = block.getFieldValue('COLUMN');
   const next = generator.valueToCode(block, 'NEXT', generator.ORDER_ATOMIC);
-  const code = next ? 'MAX(' + expression + '), ' + next : 'MAX(' + expression + ')';
+  const code = next
+    ? 'MAX(' + column + '), ' + next
+    : 'MAX(' + column + ')';
   return [code, generator.ORDER_ATOMIC]; //cambiado de ORDER_FUNCTION_CALL a ORDER_ATOMIC para evitar paréntesis innecesarios en casos simples
 };
