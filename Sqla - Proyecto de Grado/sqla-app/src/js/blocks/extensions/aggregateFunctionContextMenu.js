@@ -9,7 +9,7 @@ import * as Blockly from 'blockly';
  * Registra la extensión del menú contextual para las funciones de agregación (SUM, AVG, COUNT, MIN, MAX).
  * Solo muestra la opción de DISTINCT (TOP no está permitido en agregaciones SQL)
  */
-
+//ready
 const AGGREGATE_TYPES_NO_DISTINCT = ['sql_min', 'sql_max'];
 const COMPARISON_TYPES = ['sql_comparison', 'sql_quantified_comparison', 'sql_membership'];
 
