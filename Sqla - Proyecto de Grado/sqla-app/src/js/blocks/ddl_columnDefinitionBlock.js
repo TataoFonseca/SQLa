@@ -12,11 +12,14 @@ export const COLUMN_DEFINITION = {
       "type": "field_dropdown",
       "name": "DATA_TYPE",
       "options": [
-        ["TEXT", "TEXT"],
         ["INTEGER", "INTEGER"],
-        ["REAL", "REAL"],
-        ["NUMERIC", "NUMERIC"],
-        ["BLOB", "BLOB"]
+        ["FLOAT", "FLOAT"],
+        ["TEXT", "TEXT"],
+        ["VARCHAR", "VARCHAR"],
+        ["CHAR", "CHAR"],
+        ["BOOL", "BOOL"],
+        ["DATE", "DATE"],
+        ["DATETIME", "DATETIME"]
       ]
     }
   ],
