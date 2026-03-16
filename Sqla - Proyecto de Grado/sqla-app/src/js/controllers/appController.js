@@ -6,25 +6,25 @@ import mermaid from 'mermaid';
 import { apiService } from '../services/apiService.js';
 
 // ===Importe de Bloques===
-
 // BLOQUES DDL
 import { CREATE_TABLE_DEFINITION, CREATE_TABLE_GENERATOR } from '../blocks/ddl_CreateTableBlock.js';
 import { COLUMN_DEFINITION, COLUMN_GENERATOR } from '../blocks/ddl_ColumnDefinitionBlock.js';
 
 // BLOQUES DML
-import { FROM_SIMPLE_DEFINITION, FROM_SIMPLE_GENERATOR } from '../blocks/dml_FromSimpleBlock.js';
-import { FROM_DEFINITION, FROM_GENERATOR } from '../blocks/dml_FromBlock.js';
+import { FROM_SIMPLE_DEFINITION, FROM_SIMPLE_GENERATOR } from '../blocks/dml_FromSimpleBlock.js'; // (Agregado) FROM simple sin soporte de JOINs (FromSimpleBlock.js)
+import { FROM_DEFINITION, FROM_GENERATOR } from '../blocks/dml_FromBlock.js'; // FROM con soporte de JOINs (FromBlock.js)
 import { SELECT_DEFINITION, SELECT_GENERATOR, } from '../blocks/dml_SelectBlock.js';
 
-import { WHERE_DEFINITION, WHERE_GENERATOR } from '../blocks/dml_WhereBlock.js';
-import { registerWhereContextMenu } from '../blocks/extensions/whereContextMenu.js';
+// BLOQUE DE MENÚ CONTEXTUAL PARA FROM (FromSimpleBlock.js y FromBlock.js)
 import { registerFromContextMenu, registerFromJoinsContextMenu } from '../blocks/extensions/fromContextMenu.js';
 
+//BLOQUES DML JOIN
 import { JOIN_DEFINITION, JOIN_GENERATOR, JOIN_ONCHANGE } from '../blocks/dml_JoinBlock.js';
 
 import {
-  EXPRESSION_DEFINITION, EXPRESSION_GENERATOR,
-  EXPRESSION_ONCHANGE
+  expressionBlockDefinition, // cambió de EXPRESSION_DEFINITION, a  expressionBlockDefinition, para usar el patrón init y así poder agregar el input NEXT necesario para la coma dinámica, pero el generador y el onchange se mantienen igual
+  EXPRESSION_GENERATOR,
+  EXPRESSION_ONCHANGE // Onchange para manejar la coma dinámica en el bloque de expresión
 } from '../blocks/dml_ExpressionBlock.js';
 
 import { DISTINCT_DEFINITION, DISTINCT_GENERATOR } from '../blocks/dml_DistinctBlock.js';
@@ -32,23 +32,30 @@ import { TOP_DEFINITION, TOP_GENERATOR } from '../blocks/dml_TopBlock.js';
 
 import { registerExpressionContextMenu } from '../blocks/extensions/expressionContextMenu.js';
 
-import { AGGREGATE_EXPRESSION_DEFINITION, AGGREGATE_EXPRESSION_GENERATOR, } from '../blocks/dml_aggregateFunctionsExpressionBlock.js';
+
+// BLOQUE DE EXPRESSION dentro de funciones de agregación (sin NEXT, sin onchange) - ¡ELIMINADO!
+// import { AGGREGATE_EXPRESSION_DEFINITION, AGGREGATE_EXPRESSION_GENERATOR, } from '../blocks/dml_aggregateFunctionsExpressionBlock.js';
 
 import {
-  SUM_DEFINITION, SUM_GENERATOR,
-  AVG_DEFINITION, AVG_GENERATOR,
-  COUNT_DEFINITION, COUNT_GENERATOR,
-  MIN_DEFINITION, MIN_GENERATOR,
-  MAX_DEFINITION, MAX_GENERATOR,
-  AGGREGATE_FUNCTION_ONCHANGE
+  // SUM_DEFINITION,
+  aggregateFunction_Sum_BlockDefinition, 
+  SUM_GENERATOR,
+  aggregateFunction_Avg_BlockDefinition, AVG_GENERATOR,
+  aggregateFunction_Count_BlockDefinition, COUNT_GENERATOR,
+  aggregateFunction_Min_BlockDefinition, MIN_GENERATOR,
+  aggregateFunction_Max_BlockDefinition, MAX_GENERATOR,
+  AGGREGATE_FUNCTION_ONCHANGE // Onchange compartido para todos los bloques de funciones de agregación para añadir soporte de coma dinámica
 } from '../blocks/dml_aggregateFunctionsBlock.js';
 
-import { registerAggregateFunctionExpressionContextMenu } from '../blocks/extensions/aggregateFunctionExpressionContextMenu.js';
+// EXTENSIÓN DE MENÚ CONTEXTUAL PARA FUNCIONES DE AGREGACIÓN - CAMBIÓ DE registerAggregateFunctionExpressionContextMenu a registerAggregateFunctionContextMenu
+import { registerAggregateFunctionContextMenu } from '../blocks/extensions/aggregateFunctionContextMenu.js';
 
 import { GROUPBY_DEFINITION, GROUPBY_GENERATOR, GROUPBY_ONCHANGE } from '../blocks/dml_GroupByBlock.js';
 import { GROUPBY_COLUMN_DEFINITION, GROUPBY_COLUMN_GENERATOR, GROUPBY_COLUMN_ONCHANGE } from '../blocks/dml_GroupByColumnBlock.js';
 
 import { HAVING_DEFINITION, HAVING_GENERATOR } from '../blocks/dml_HavingBlock.js';
+
+// EXTENSIÓN PARA MENU CONTEXTUAL DE EXPRESIONES EN HAVING
 import { registerHavingExpressionContextMenu } from '../blocks/extensions/havingExpressionContextMenu.js';
 
 import { EXPRESSION_SINGLE_DEFINITION, EXPRESSION_SINGLE_GENERATOR } from '../blocks/dml_ExpressionSingleBlock.js';
@@ -106,8 +113,11 @@ export const AppController = {
     registerExpressionContextMenu();
     registerFromContextMenu();
     registerFromJoinsContextMenu();
-    registerWhereContextMenu();
-    registerAggregateFunctionExpressionContextMenu();
+
+    //REGISTRO DEL MENÚ CONTEXTUAL DE EXTENSIÓN PARA *--*EXPRESIONES EN*--* FUNCIONES DE AGREGACIÓN
+    registerAggregateFunctionContextMenu();
+
+    //REGISTRO DEL MENÚ CONTEXTUAL DE EXTENSIÓN PARA EXPRESIONES EN HAVING
     registerHavingExpressionContextMenu();
 
     // REGISTRO DE BLOQUES (JSON)
@@ -117,10 +127,9 @@ export const AppController = {
       COLUMN_DEFINITION,
 
       // DML
-      FROM_SIMPLE_DEFINITION,
+      FROM_SIMPLE_DEFINITION, //Agregado FROM simple sin soporte de JOINs
       FROM_DEFINITION,
       SELECT_DEFINITION,
-      WHERE_DEFINITION,
 
       // DML: DISTINCT Y TOP
       DISTINCT_DEFINITION,
@@ -138,43 +147,54 @@ export const AppController = {
       MEMBERSHIP_DEFINITION,
     ]);
 
-    // Bloques con onchange → registro manual
+    
+
+    // Bloques con onchange (coma dinámica) → registro manual con Blockly.Blocks
+    //DML: EXPRESSION CON EXPRESSION_ONCHANGE (MENÚ CONTEXTUAL para DISTINCT/TOP)
+    // Actualizado para usar el patrón init en lugar de jsonInit, para poder agregar el input NEXT necesario para la coma dinámica, pero el generador y el onchange se mantienen igual
     Blockly.Blocks['sql_expression'] = {
-      init: function () { this.jsonInit(EXPRESSION_DEFINITION); },
+      ...expressionBlockDefinition(Blockly),
       onchange: EXPRESSION_ONCHANGE
     };
 
-    Blockly.Blocks['sql_aggregate_expression'] = {
-      init: function () { this.jsonInit(AGGREGATE_EXPRESSION_DEFINITION); },
-    };
+    // ¡ELIMINADO!
+    // Blockly.Blocks['sql_aggregate_expression'] = {
+    //   init: function () { this.jsonInit(AGGREGATE_EXPRESSION_DEFINITION); }, // Bloque de expresión para funciones de agregación
+    // };
 
     Blockly.Blocks['sql_join'] = {
       init: function () { this.jsonInit(JOIN_DEFINITION); },
       onchange: JOIN_ONCHANGE
     };
 
+    //DML: FUNCIONES DE AGREGACIÓN (con onchange)
     Blockly.Blocks['sql_sum'] = {
-      init: function () { this.jsonInit(SUM_DEFINITION); },
+      // init: function () { this.jsonInit(SUM_DEFINITION); },
+      ...aggregateFunction_Sum_BlockDefinition(Blockly),
       onchange: AGGREGATE_FUNCTION_ONCHANGE
     };
 
     Blockly.Blocks['sql_avg'] = {
-      init: function () { this.jsonInit(AVG_DEFINITION); },
+      // init: function () { this.jsonInit(AVG_DEFINITION); },
+      ...aggregateFunction_Avg_BlockDefinition(Blockly),
       onchange: AGGREGATE_FUNCTION_ONCHANGE
     };
 
     Blockly.Blocks['sql_count'] = {
-      init: function () { this.jsonInit(COUNT_DEFINITION); },
+      // init: function () { this.jsonInit(COUNT_DEFINITION); },
+      ...aggregateFunction_Count_BlockDefinition(Blockly),
       onchange: AGGREGATE_FUNCTION_ONCHANGE
     };
 
     Blockly.Blocks['sql_min'] = {
-      init: function () { this.jsonInit(MIN_DEFINITION); },
+      // init: function () { this.jsonInit(MIN_DEFINITION); },
+      ...aggregateFunction_Min_BlockDefinition(Blockly),
       onchange: AGGREGATE_FUNCTION_ONCHANGE
     };
 
     Blockly.Blocks['sql_max'] = {
-      init: function () { this.jsonInit(MAX_DEFINITION); },
+      // init: function () { this.jsonInit(MAX_DEFINITION); },
+      ...aggregateFunction_Max_BlockDefinition(Blockly),
       onchange: AGGREGATE_FUNCTION_ONCHANGE
     };
 
@@ -206,6 +226,12 @@ export const AppController = {
       return EXPRESSION_GENERATOR(block, javascriptGenerator);
     };
 
+    //¡ELIMINADO! Expresión dentro de los bloques de función de agregación
+    // javascriptGenerator.forBlock['sql_aggregate_expression'] = function (block) {
+    //   return AGGREGATE_EXPRESSION_GENERATOR(block, javascriptGenerator);
+    // };
+
+    //Registro de generadores de FROM (simple y con joins)
     javascriptGenerator.forBlock['sql_from_simple'] = function (block) {
       return FROM_SIMPLE_GENERATOR(block, javascriptGenerator);
     };

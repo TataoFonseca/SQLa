@@ -126,41 +126,22 @@
       </block>
 
       <category name="Funciones de Agregación" colour="120">
-        <block type="sql_sum">
-          <value name="EXPRESSION">
-            <block type="sql_aggregate_expression">
-              <field name="COLUMN">columna</field>
-            </block>
-          </value>
-        </block>
-        <block type="sql_avg">
-          <value name="EXPRESSION">
-            <block type="sql_aggregate_expression">
-              <field name="COLUMN">columna</field>
-            </block>
-          </value>
-        </block>
-        <block type="sql_count">
-          <value name="EXPRESSION">
-            <block type="sql_aggregate_expression">
-              <field name="COLUMN">columna</field>
-            </block>
-          </value>
-        </block>
-        <block type="sql_min">
-          <value name="EXPRESSION">
-            <block type="sql_aggregate_expression">
-              <field name="COLUMN">columna</field>
-            </block>
-          </value>
-        </block>
-        <block type="sql_max">
-          <value name="EXPRESSION">
-            <block type="sql_aggregate_expression">
-              <field name="COLUMN">columna</field>
-            </block>
-          </value>
-        </block>
+
+        <!-- SUM que usa extensión de agregación (menú contextual) -->
+        <block type="sql_sum"></block>
+
+        <!-- AVG que usa extensión de agregación (menú contextual) -->
+        <block type="sql_avg"></block>
+
+        <!-- COUNT que usa extensión de agregación (menú contextual)-->
+        <block type="sql_count"></block>
+
+        <!-- MIN que usa extensión de agregación (menú contextual) -->
+        <block type="sql_min"></block>
+
+        <!-- MAX que usa extensión de agregación (menú contextual) -->
+        <block type="sql_max"></block>
+
       </category>
 
       <label text="— HAVING —" web-class="toolbox-label"></label>
