@@ -5,6 +5,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SQL por Bloques - App</title>
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Bootstrap Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
   <link rel="stylesheet" href="../assets/css/style.css">
 </head>
 
@@ -12,71 +16,105 @@
   <!-- HEADER -->
   <div id="header-container"></div>
 
-
   <div class="app-container">
+    <!-- ÁREA DE CONTROLES -->
+    <div class="controls-area">
+      <!-- Botón de menú (siempre visible) -->
+      <button class="btn menu-toggle-btn" id="menuToggleBtn">
+        <i class="bi bi-list"></i>
+      </button>
 
-    <!-- CONTROLES SUPERIORES -->
-    <div class="controls">
-      <button id="showMermaidBtn">Mostrar/Esconder Diagrama ERD</button>
-      <button id="showOutputBtn">Mostrar/Esconder SQL Output</button>
+      <!-- MENÚ HORIZONTAL DESPLEGABLE -->
+      <div class="horizontal-menu" id="horizontalMenu">
+        <!-- Botón 1: ERD -->
+        <button class="menu-item" id="showMermaidBtn">
+          <i class="bi bi-diagram-3 me-2"></i>Mostrar/Esconder Diagrama ERD
+        </button>
 
-      <!-- Combo: Abrir BD -->
-      <div class="combobox-container">
-        <button id="showOpenBdBtn">Abrir Bases de Datos ▼</button>
-        <div class="combobox-menu" id="openBdMenu">
-          <ul>
-            <li>Importar desde archivo</li>
+        <!-- Botón 2: SQL Output -->
+        <button class="menu-item" id="showOutputBtn">
+          <i class="bi bi-code-square me-2"></i>Mostrar/Esconder SQL Output
+        </button>
+
+        <!-- Dropdown Exportar -->
+        <div class="dropdown d-inline-block">
+          <button class="menu-item dropdown-toggle" id="showExportBdBtn" data-bs-toggle="dropdown"
+            aria-expanded="false">
+            <i class="bi bi-database me-2"></i>Exportar Bases de Datos
+          </button>
+          <ul class="dropdown-menu" aria-labelledby="showExportBdBtn">
+            <li><a class="dropdown-item" href="#" id="exportSqlBtn">Exportar como .SQL</a></li>
+            <li><a class="dropdown-item" href="#" id="exportJsonBtn">Exportar como .JSON</a></li>
           </ul>
         </div>
-      </div>
 
-      <!-- Combo: Exportar BD -->
-      <div class="combobox-container">
-        <button id="showExportBdBtn">Exportar Bases de Datos ▼</button>
-        <div class="combobox-menu" id="exportBdMenu">
-          <ul>
-            <li>Exportar como .SQL</li>
-            <li>Exportar como .JSON</li>
-          </ul>
+        <!-- Campo de sesión DENTRO del menú -->
+        <div class="session-menu-item">
+          <div class="session-field">
+            <span class="session-label">Sesión:</span>
+            <div class="session-password-wrapper">
+              <!-- value se rellena desde JS con el UUID real -->
+              <input type="password" id="sessionNumber" class="session-input" value="" readonly
+                title="UUID de tu sesión activa">
+              <button class="session-toggle-btn" id="toggleSessionVisibility" type="button">
+                <i class="bi bi-eye" id="sessionEyeIcon"></i>
+              </button>
+              <button class="session-copy-btn" id="copySessionBtn" type="button"
+                title="Copiar UUID de sesión">
+                <i class="bi bi-files"></i>
+              </button>
+            </div>
+          </div>
         </div>
+
+        <!-- Botón cerrar sesión -->
+        <button class="menu-item" id="logoutBtn" style="border-color: rgba(255,80,80,0.4); color: #ff8080;">
+          <i class="bi bi-box-arrow-left me-2"></i>Cerrar Sesión
+        </button>
       </div>
     </div>
 
     <!-- LAYOUT PRINCIPAL -->
     <div class="main-layout">
-      <!-- Blockly -->
-      <div id="blocklyDiv" class="blockly-container"></div>
+      <!-- Columna Izquierda (Blockly + SQL Output) -->
+      <div class="left-column">
+        <!-- Blockly -->
+        <div id="blocklyDiv" class="blockly-container"></div>
+
+        <!-- Barra de herramientas (Ejecutar) -->
+        <div class="execute-toolbar" style="display: flex; justify-content: flex-start; padding: 5px 0;">
+          <button id="executeBtn" class="btn-glass-play">
+            <i class="bi bi-play-fill me-1"></i>Ejecutar
+          </button>
+        </div>
+
+        <!-- SQL OUTPUT -->
+        <div id="sqlOutput" class="sql-output" style="display:none;"></div>
+      </div>
 
       <!-- Mermaid -->
       <div id="mermaidDiv" class="mermaid-container" style="display:none;"></div>
     </div>
 
-    <!-- SQL OUTPUT -->
-    <div id="sqlOutput" class="sql-output" style="display:none;"></div>
-
   </div>
 
-  <!-- TOOLBOX oculto -->
+  <!-- TOOLBOX -->
   <xml id="toolbox" style="display:none">
     <category name="Sentencias DDL" colour="260">
       <block type="sql_create_table"></block>
       <block type="sql_column_definition"></block>
-
-      <category name="Constraints de Columna" colour="160">
-        <block type="sql_column_identity"></block>
-        <block type="sql_column_not_null"></block>
-        <block type="sql_column_unique"></block>
-        <block type="sql_column_default"></block>
-        <block type="sql_column_check"></block>
-        <block type="sql_column_references"></block>
-      </category>
+      
     </category>
     <category name="Consultar a Base de datos" colour="160">
+      <label text="— SELECT —" web-class="toolbox-label"></label>
       <block type="sql_select"></block>
       <block type="sql_expression"></block>
+      <label text="— FROM —" web-class="toolbox-label"></label>
       <block type="sql_from_simple"></block>
       <block type="sql_join"></block>
-      <!-- GROUP BY pre-cargado con un GroupByColumn -->
+      <label text="— WHERE —" web-class="toolbox-label"></label>
+      <block type="sql_where"></block>
+      <label text="— GROUP BY —" web-class="toolbox-label"></label>
       <block type="sql_group_by">
         <value name="COLUMNS">
           <block type="sql_groupby_column">
@@ -84,13 +122,10 @@
           </block>
         </value>
       </block>
-
-      <!-- GroupByColumn suelto por si el usuario quiere añadir más columnas manualmente -->
       <block type="sql_groupby_column">
         <field name="COLUMN">column_name</field>
       </block>
 
-      <!-- SUBCATEGORÍA PARA FUNCIONES DE AGREGACIÓN -->
       <category name="Funciones de Agregación" colour="120">
 
         <!-- SUM que usa extensión de agregación (menú contextual) -->
@@ -109,9 +144,8 @@
         <block type="sql_max"></block>
 
       </category>
-      <!-- SUBCATEGORÍA: CONDICIONES (WHERE / HAVING) -->
 
-      <!-- HAVING pre-cargado con ExpressionSingle -->
+      <label text="— HAVING —" web-class="toolbox-label"></label>
       <block type="sql_having">
         <value name="EXPRESSION">
           <block type="sql_expression_single">
@@ -119,25 +153,21 @@
           </block>
         </value>
       </block>
-
-      <!-- ExpressionSingle suelto — para conectar manualmente al HAVING -->
       <block type="sql_expression_single">
         <field name="COLUMN">columna</field>
       </block>
-
-      <!-- Nota: Comparison/QuantifiedComparison/Membership se agregan 
-          desde click derecho sobre el bloque dentro de HAVING -->
-
-
     </category>
+
     <category name="Logic" colour="%{BKY_LOGIC_HUE}">
       <block type="controls_if"></block>
       <block type="logic_compare"></block>
     </category>
+
     <category name="Loops" colour="%{BKY_LOOPS_HUE}">
       <block type="controls_repeat_ext"></block>
       <block type="controls_whileUntil"></block>
     </category>
+
     <category name="Math" colour="%{BKY_MATH_HUE}">
       <block type="math_number"></block>
       <block type="math_arithmetic"></block>
@@ -146,6 +176,96 @@
 
   <div id="footer-container"></div>
 
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- Script menú horizontal -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const menuToggleBtn = document.getElementById('menuToggleBtn');
+      const horizontalMenu = document.getElementById('horizontalMenu');
+
+      if (menuToggleBtn && horizontalMenu) {
+        menuToggleBtn.addEventListener('click', function () {
+          horizontalMenu.classList.toggle('show');
+        });
+
+        document.addEventListener('click', function (event) {
+          if (!menuToggleBtn.contains(event.target) && !horizontalMenu.contains(event.target)) {
+            horizontalMenu.classList.remove('show');
+          }
+        });
+      }
+    });
+  </script>
+
+  <!-- Script campo de sesión — conectado al apiService real -->
+  <script type="module">
+    import { apiService } from '/src/js/services/apiService.js';
+
+    document.addEventListener('DOMContentLoaded', function () {
+      const sessionInput = document.getElementById('sessionNumber');
+      const toggleBtn    = document.getElementById('toggleSessionVisibility');
+      const eyeIcon      = document.getElementById('sessionEyeIcon');
+      const copyBtn      = document.getElementById('copySessionBtn');
+      const logoutBtn    = document.getElementById('logoutBtn');
+
+      // ── Cargar UUID real desde apiService / localStorage ──────
+      const sessionId = apiService.getCurrentSession().sessionId
+                     || localStorage.getItem('sqlSessionId');
+
+      if (!sessionId) {
+        // Sin sesión → volver al inicio
+        window.location.href = '/index.html';
+        return;
+      }
+
+      sessionInput.value = sessionId;
+
+      // ── Toggle mostrar / ocultar UUID ────────────────────────
+      toggleBtn.addEventListener('click', function () {
+        if (sessionInput.type === 'password') {
+          sessionInput.type = 'text';
+          eyeIcon.classList.replace('bi-eye', 'bi-eye-slash');
+        } else {
+          sessionInput.type = 'password';
+          eyeIcon.classList.replace('bi-eye-slash', 'bi-eye');
+        }
+      });
+
+      // ── Copiar UUID al portapapeles ──────────────────────────
+      copyBtn.addEventListener('click', async function () {
+        try {
+          await navigator.clipboard.writeText(sessionInput.value);
+
+          // Feedback visual: check verde
+          copyBtn.innerHTML = '<i class="bi bi-check-lg"></i>';
+          copyBtn.style.color = '#00ff99';
+
+          setTimeout(() => {
+            copyBtn.innerHTML = '<i class="bi bi-files"></i>';
+            copyBtn.style.color = '';
+          }, 2000);
+
+        } catch (err) {
+          copyBtn.innerHTML = '<i class="bi bi-exclamation-triangle"></i>';
+          copyBtn.style.color = '#ff5555';
+
+          setTimeout(() => {
+            copyBtn.innerHTML = '<i class="bi bi-files"></i>';
+            copyBtn.style.color = '';
+          }, 2000);
+        }
+      });
+
+      // ── Cerrar sesión ────────────────────────────────────────
+      logoutBtn.addEventListener('click', function () {
+        apiService.clearSession();
+        window.location.href = '/index.html';
+      });
+    });
+  </script>
+
   <!-- SCRIPT PRINCIPAL -->
   <script type="module">
     import { AppController } from '/src/js/controllers/appController.js';
@@ -153,7 +273,7 @@
 
     document.addEventListener('DOMContentLoaded', async () => {
       await loadPartials({ header: true, footer: true });
-      AppController.init(); // toda la lógica de eventos está dentro
+      AppController.init();
     });
   </script>
 </body>

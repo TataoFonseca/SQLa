@@ -7,16 +7,29 @@ import mermaid from 'mermaid';
 // ===Importe de Bloques===
 // BLOQUES DDL
 import { CREATE_TABLE_DEFINITION, CREATE_TABLE_GENERATOR } from '../blocks/ddl_CreateTableBlock.js';
-import { COLUMN_DEFINITION, COLUMN_GENERATOR } from '../blocks/ddl_ColumnDefinitionBlock.js';
+import { columnDefinitionBlockInit, COLUMN_GENERATOR } from '../blocks/ddl_ColumnDefinitionBlock.js';
+
+// Menu contextual para constraints de columna
+import { COLUMN_DEFINITION_CONTEXT_MENU } from '../blocks/extensions/columnDefinitionContextMenu.js';
 
 // CONSTRAINTS DE COLUMNA
+
+// import {
+//   COLUMN_IDENTITY_DEFINITION,   COLUMN_IDENTITY_GENERATOR,   COLUMN_IDENTITY_ONCHANGE,
+//   COLUMN_NOT_NULL_DEFINITION,   COLUMN_NOT_NULL_GENERATOR,   COLUMN_NOT_NULL_ONCHANGE,
+//   COLUMN_UNIQUE_DEFINITION,     COLUMN_UNIQUE_GENERATOR,     COLUMN_UNIQUE_ONCHANGE,
+//   COLUMN_DEFAULT_DEFINITION,    COLUMN_DEFAULT_GENERATOR,    COLUMN_DEFAULT_ONCHANGE,
+//   COLUMN_CHECK_DEFINITION,      COLUMN_CHECK_GENERATOR,      COLUMN_CHECK_ONCHANGE,
+//   COLUMN_REFERENCES_DEFINITION, COLUMN_REFERENCES_GENERATOR, COLUMN_REFERENCES_ONCHANGE,
+// } from '../blocks/ddl_ColumnConstraints.js';
+
 import {
-  COLUMN_IDENTITY_DEFINITION,   COLUMN_IDENTITY_GENERATOR,   COLUMN_IDENTITY_ONCHANGE,
-  COLUMN_NOT_NULL_DEFINITION,   COLUMN_NOT_NULL_GENERATOR,   COLUMN_NOT_NULL_ONCHANGE,
-  COLUMN_UNIQUE_DEFINITION,     COLUMN_UNIQUE_GENERATOR,     COLUMN_UNIQUE_ONCHANGE,
-  COLUMN_DEFAULT_DEFINITION,    COLUMN_DEFAULT_GENERATOR,    COLUMN_DEFAULT_ONCHANGE,
-  COLUMN_CHECK_DEFINITION,      COLUMN_CHECK_GENERATOR,      COLUMN_CHECK_ONCHANGE,
-  COLUMN_REFERENCES_DEFINITION, COLUMN_REFERENCES_GENERATOR, COLUMN_REFERENCES_ONCHANGE,
+  columnIdentityBlockInit,    COLUMN_IDENTITY_GENERATOR,
+  columnNotNullBlockInit,     COLUMN_NOT_NULL_GENERATOR,
+  columnUniqueBlockInit,      COLUMN_UNIQUE_GENERATOR,
+  columnDefaultBlockInit,     COLUMN_DEFAULT_GENERATOR,
+  columnCheckBlockInit,       COLUMN_CHECK_GENERATOR,
+  columnReferencesBlockInit,  COLUMN_REFERENCES_GENERATOR,
 } from '../blocks/ddl_ColumnConstraints.js';
 
 
@@ -124,6 +137,13 @@ export const AppController = {
     //REGISTRO DEL MENÚ CONTEXTUAL DE EXTENSIÓN PARA EXPRESIONES EN HAVING
     registerHavingExpressionContextMenu();
 
+    // Registrar extensión ANTES de defineBlocksWithJsonArray
+    Blockly.Extensions.registerMixin(
+      'column_definition_context_menu',
+      COLUMN_DEFINITION_CONTEXT_MENU.mixin
+    );
+
+
     // PASO 2: REGISTRO DE BLOQUES (JSON) ===
     //Bloques sin OnChange, se usa defineBlocksWithJsonArray
     Blockly.defineBlocksWithJsonArray([
@@ -132,12 +152,12 @@ export const AppController = {
       COLUMN_DEFINITION,
 
       // Constraints de columna
-      COLUMN_IDENTITY_DEFINITION,
-      COLUMN_NOT_NULL_DEFINITION,
-      COLUMN_UNIQUE_DEFINITION,
-      COLUMN_DEFAULT_DEFINITION,
-      COLUMN_CHECK_DEFINITION,
-      COLUMN_REFERENCES_DEFINITION,
+      // COLUMN_IDENTITY_DEFINITION,
+      // COLUMN_NOT_NULL_DEFINITION,
+      // COLUMN_UNIQUE_DEFINITION,
+      // COLUMN_DEFAULT_DEFINITION,
+      // COLUMN_CHECK_DEFINITION,
+      // COLUMN_REFERENCES_DEFINITION,
 
       // DML
       FROM_SIMPLE_DEFINITION, //Agregado FROM simple sin soporte de JOINs
@@ -161,13 +181,17 @@ export const AppController = {
 
     ]);
 
-    // Bloques con onchange 
-    Blockly.Blocks['sql_column_identity'].onchange    = COLUMN_IDENTITY_ONCHANGE;
-    Blockly.Blocks['sql_column_not_null'].onchange    = COLUMN_NOT_NULL_ONCHANGE;
-    Blockly.Blocks['sql_column_unique'].onchange      = COLUMN_UNIQUE_ONCHANGE;
-    Blockly.Blocks['sql_column_default'].onchange     = COLUMN_DEFAULT_ONCHANGE;
-    Blockly.Blocks['sql_column_check'].onchange       = COLUMN_CHECK_ONCHANGE;
-    Blockly.Blocks['sql_column_references'].onchange  = COLUMN_REFERENCES_ONCHANGE;
+    //============== Bloques con onchange 
+    Blockly.Blocks['sql_column_definition'] = {
+      ...columnDefinitionBlockInit(Blockly)
+    };
+
+    Blockly.Blocks['sql_column_identity']   = columnIdentityBlockInit(Blockly);
+    Blockly.Blocks['sql_column_not_null']   = columnNotNullBlockInit(Blockly);
+    Blockly.Blocks['sql_column_unique']     = columnUniqueBlockInit(Blockly);
+    Blockly.Blocks['sql_column_default']    = columnDefaultBlockInit(Blockly);
+    Blockly.Blocks['sql_column_check']      = columnCheckBlockInit(Blockly);
+    Blockly.Blocks['sql_column_references'] = columnReferencesBlockInit(Blockly);
 
 
     // (coma dinámica) → registro manual con Blockly.Blocks
@@ -260,17 +284,27 @@ export const AppController = {
       return CREATE_TABLE_GENERATOR(block, javascriptGenerator);
     };
 
-    javascriptGenerator.forBlock['sql_column_definition'] = function (block) {
-      return COLUMN_GENERATOR(block, javascriptGenerator);
-    };
+    // javascriptGenerator.forBlock['sql_column_definition'] = function (block) {
+    //   return COLUMN_GENERATOR(block, javascriptGenerator);
+    // };
+
+    javascriptGenerator.forBlock['sql_column_definition'] = COLUMN_GENERATOR;
 
     // Generadores para constraints de columna
-    javascriptGenerator.forBlock['sql_column_identity']    = COLUMN_IDENTITY_GENERATOR;
-    javascriptGenerator.forBlock['sql_column_not_null']    = COLUMN_NOT_NULL_GENERATOR;
-    javascriptGenerator.forBlock['sql_column_unique']      = COLUMN_UNIQUE_GENERATOR;
-    javascriptGenerator.forBlock['sql_column_default']     = COLUMN_DEFAULT_GENERATOR;
-    javascriptGenerator.forBlock['sql_column_check']       = COLUMN_CHECK_GENERATOR;
-    javascriptGenerator.forBlock['sql_column_references']  = COLUMN_REFERENCES_GENERATOR;
+    // javascriptGenerator.forBlock['sql_column_identity']    = COLUMN_IDENTITY_GENERATOR;
+    // javascriptGenerator.forBlock['sql_column_not_null']    = COLUMN_NOT_NULL_GENERATOR;
+    // javascriptGenerator.forBlock['sql_column_unique']      = COLUMN_UNIQUE_GENERATOR;
+    // javascriptGenerator.forBlock['sql_column_default']     = COLUMN_DEFAULT_GENERATOR;
+    // javascriptGenerator.forBlock['sql_column_check']       = COLUMN_CHECK_GENERATOR;
+    // javascriptGenerator.forBlock['sql_column_references']  = COLUMN_REFERENCES_GENERATOR;
+
+    javascriptGenerator.forBlock['sql_column_definition'] = COLUMN_GENERATOR;
+    javascriptGenerator.forBlock['sql_column_identity']   = COLUMN_IDENTITY_GENERATOR;
+    javascriptGenerator.forBlock['sql_column_not_null']   = COLUMN_NOT_NULL_GENERATOR;
+    javascriptGenerator.forBlock['sql_column_unique']     = COLUMN_UNIQUE_GENERATOR;
+    javascriptGenerator.forBlock['sql_column_default']    = COLUMN_DEFAULT_GENERATOR;
+    javascriptGenerator.forBlock['sql_column_check']      = COLUMN_CHECK_GENERATOR;
+    javascriptGenerator.forBlock['sql_column_references'] = COLUMN_REFERENCES_GENERATOR;
 
 
     // === PASO 4: REGISTRO DE GENERADORES DML ===
