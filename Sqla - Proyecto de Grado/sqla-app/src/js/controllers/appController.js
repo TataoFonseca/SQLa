@@ -149,7 +149,7 @@ export const AppController = {
     Blockly.defineBlocksWithJsonArray([
       // DDL
       CREATE_TABLE_DEFINITION,
-      COLUMN_DEFINITION,
+      // COLUMN_DEFINITION,
 
       // Constraints de columna
       // COLUMN_IDENTITY_DEFINITION,
