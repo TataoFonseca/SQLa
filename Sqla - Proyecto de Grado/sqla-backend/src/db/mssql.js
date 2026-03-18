@@ -1,6 +1,12 @@
 import sql from "mssql";
 import dotenv from "dotenv";
-dotenv.config();
+import { fileURLToPath } from "url";
+import { dirname, resolve } from "path";
+
+// Resolver la ruta al .env relativo a este archivo (src/.env),
+// independientemente del directorio desde donde se ejecute Node.
+const __dirname = dirname(fileURLToPath(import.meta.url));
+dotenv.config({ path: resolve(__dirname, "../.env") });
 
 const config = {
     user: process.env.DB_USER,
@@ -13,7 +19,7 @@ const config = {
         idleTimeoutMillis: 30000
     },
     options: {
-        port: Number(process.env.DB_PORT) || 1433,
+        port: Number(process.env.DB_PORT) || 1433,  // puerto estático (fijado en SQL Server Config Manager)
         encrypt: false,
         trustServerCertificate: true
     }
