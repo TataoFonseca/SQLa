@@ -58,17 +58,17 @@
 
   <!-- TOOLBOX oculto -->
   <xml id="toolbox" style="display:none">
-    <category name="Sentencias DDL" colour="260">
+    <category name="Crear tabla en base de datos" colour="260">
       <block type="sql_create_table"></block>
       <block type="sql_column_definition"></block>
-       <category name="Constraints de Columna" colour="160">
-        <block type="sql_column_identity"></block>
+       <!-- <category name="Constraints de Columna" colour="160"> -->
+        <!-- <block type="sql_column_identity"></block> --> <!-- Deshabilitado porque no es el mismo para todos los motores y puede resultar confuso -->
         <block type="sql_column_not_null"></block>
         <block type="sql_column_unique"></block>
         <block type="sql_column_default"></block>
         <block type="sql_column_check"></block>
         <block type="sql_column_references"></block>
-      </category>
+      <!-- </category> -->
     </category>
     <category name="Consultar a Base de datos" colour="160">
       <block type="sql_select"></block>

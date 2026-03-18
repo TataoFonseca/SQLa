@@ -577,7 +577,7 @@ export function columnIdentityBlockInit(Blockly) {
         .appendField(new Blockly.FieldNumber(1, null, null, 1), 'INCREMENT')
         .appendField(')');
     },
-    'Auto-incremento. Solo válido para tipos numéricos enteros.'
+    'Auto-incremento. Solo válido para tipos numéricos enteros. \n Formato: IDENTITY (semilla, incremento).'
   );
 }
 

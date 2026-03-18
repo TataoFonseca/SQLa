@@ -8,9 +8,13 @@ import mermaid from 'mermaid';
 // BLOQUES DDL
 import { CREATE_TABLE_DEFINITION, CREATE_TABLE_GENERATOR } from '../blocks/ddl_CreateTableBlock.js';
 import { columnDefinitionBlockInit, COLUMN_GENERATOR } from '../blocks/ddl_ColumnDefinitionBlock.js';
+import { columnPrimaryKeyBlockInit, COLUMN_PRIMARY_KEY_GENERATOR } from '../blocks/ddl_ColumnPrimaryKey.js';
 
 // Menu contextual para constraints de columna
-import { COLUMN_DEFINITION_CONTEXT_MENU } from '../blocks/extensions/columnDefinitionContextMenu.js';
+// import { COLUMN_DEFINITION_CONTEXT_MENU } from '../blocks/extensions/columnDefinitionContextMenu.js';
+
+// Menu contextual para PRIMARY KEY en bloque de definición de columna
+import { registerPrimaryKeyContextMenu } from '../blocks/extensions/primaryKeyContextMenu.js';
 
 // CONSTRAINTS DE COLUMNA
 
@@ -124,7 +128,17 @@ export const AppController = {
     javascriptGenerator.ORDER_SUBTRACTION = 4;
     javascriptGenerator.ORDER_NONE = 99;
 
-    //REGISTRO DEL MENÚ CONTEXTUAL PARA EL BLOQUE DE EXPRESIÓN (ANTES DE LOS BLOQUES)
+    //REGISTRO DE EXTENSION DE MENÚ CONTEXTUAL PARA PRIMARY KEY EN BLOQUE DE DEFINICIÓN DE COLUMNA
+    registerPrimaryKeyContextMenu();
+
+    // REGISTRO DE EXTENSION DE MENÚ CONTEXTUAL PARA DEFINICIÓN DE COLUMNA
+    // Blockly.Extensions.registerMixin(
+    //   'column_definition_context_menu',
+    //   COLUMN_DEFINITION_CONTEXT_MENU.mixin
+    // );
+
+
+    //REGISTRO DEL MENÚ CONTEXTUAL PARA EL BLOQUE DE EXPRESIÓN de SELECT (ANTES DE LOS BLOQUES)
     registerExpressionContextMenu();
 
     //REGISTRO DEL MENÚ CONTEXTUAL PARA FROM (FromSimpleBlock y FromBlock)
@@ -136,12 +150,6 @@ export const AppController = {
 
     //REGISTRO DEL MENÚ CONTEXTUAL DE EXTENSIÓN PARA EXPRESIONES EN HAVING
     registerHavingExpressionContextMenu();
-
-    // Registrar extensión ANTES de defineBlocksWithJsonArray
-    Blockly.Extensions.registerMixin(
-      'column_definition_context_menu',
-      COLUMN_DEFINITION_CONTEXT_MENU.mixin
-    );
 
 
     // PASO 2: REGISTRO DE BLOQUES (JSON) ===
@@ -182,10 +190,23 @@ export const AppController = {
     ]);
 
     //============== Bloques con onchange 
+    // Bloques que requieren lógica adicional en el menú contextual o generación de código, se registran manualmente con Blockly.Blocks
+
+    // DDL: PRIMARY KEY (bloque de constraint para columna primaria)
+    Blockly.Blocks['sql_column_primary_key'] = columnPrimaryKeyBlockInit(Blockly);
+
+    // // extensión al bloque columna normal
+    // Blockly.Blocks['sql_column_definition'] = {
+    //   ...columnDefinitionBlockInit(Blockly),
+    //   // la extensión se aplica en el init via Extensions.apply
+    // };
+
+    // DDL: DEFINICIÓN DE COLUMNA 
     Blockly.Blocks['sql_column_definition'] = {
       ...columnDefinitionBlockInit(Blockly)
     };
 
+    // DDL: CONSTRAINTS DE COLUMNA
     Blockly.Blocks['sql_column_identity']   = columnIdentityBlockInit(Blockly);
     Blockly.Blocks['sql_column_not_null']   = columnNotNullBlockInit(Blockly);
     Blockly.Blocks['sql_column_unique']     = columnUniqueBlockInit(Blockly);
@@ -287,6 +308,8 @@ export const AppController = {
     // javascriptGenerator.forBlock['sql_column_definition'] = function (block) {
     //   return COLUMN_GENERATOR(block, javascriptGenerator);
     // };
+
+    javascriptGenerator.forBlock['sql_column_primary_key'] = COLUMN_PRIMARY_KEY_GENERATOR;
 
     javascriptGenerator.forBlock['sql_column_definition'] = COLUMN_GENERATOR;
 
