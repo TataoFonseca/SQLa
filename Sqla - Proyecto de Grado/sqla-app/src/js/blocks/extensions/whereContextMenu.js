@@ -54,19 +54,19 @@ export function registerWhereContextMenu() {
                     text: '➕ Add COMPARISON',
                     enabled: true,
                     // LEFT: columna a comparar | RIGHT: valor escalar
-                    callback: insertComparison('sql_comparison', 'columna', 'Dato escalar (un solo valor) o Sybquery (1x)')
+                    callback: insertComparison('sql_comparison', 'columna', 'valor')
                 });
                 options.push({
                     text: '➕ Add QUANTIFIED COMPARISON',
                     enabled: true,
                     // LEFT: columna | RIGHT: subquery o lista
-                    callback: insertComparison('sql_quantified_comparison', 'columna', 'Subquery(Nx1) o valores separados por comas o Tabla')
+                    callback: insertComparison('sql_quantified_comparison', 'columna', 'subquery')
                 });
                 options.push({
                     text: '➕ Add MEMBERSHIP',
                     enabled: true,
                     // LEFT: columna | RIGHT: lista de valores
-                    callback: insertComparison('sql_membership', 'columna', 'valor1, valor2, valor 3... lista separada por comas')
+                    callback: insertComparison('sql_membership', 'columna', 'valor1, valor2')
                 });
             } else {
                 options.push({

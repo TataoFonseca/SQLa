@@ -19,7 +19,7 @@ export const WHERE_DEFINITION = {
   "extensions": ["where_context_menu"]
 };
 
-export const WHERE_GENERATOR = function(block, generator) {
+export const WHERE_GENERATOR = function (block, generator) {
   const condition = generator.valueToCode(block, 'CONDITION', generator.ORDER_ATOMIC);
   if (!condition) return '';
   return 'WHERE ' + condition + '\n';
