@@ -4,29 +4,16 @@ import * as Blockly from 'blockly';
 import { javascriptGenerator } from 'blockly/javascript';
 import mermaid from 'mermaid';
 
-// ===Importe de Bloques===
-// BLOQUES DDL
+// === Importe de Bloques===
+// ==== BLOQUES DDL
 import { CREATE_TABLE_DEFINITION, CREATE_TABLE_GENERATOR } from '../blocks/ddl_CreateTableBlock.js';
 import { columnDefinitionBlockInit, COLUMN_GENERATOR } from '../blocks/ddl_ColumnDefinitionBlock.js';
 import { columnPrimaryKeyBlockInit, COLUMN_PRIMARY_KEY_GENERATOR } from '../blocks/ddl_ColumnPrimaryKey.js';
-
-// Menu contextual para constraints de columna
-// import { COLUMN_DEFINITION_CONTEXT_MENU } from '../blocks/extensions/columnDefinitionContextMenu.js';
 
 // Menu contextual para PRIMARY KEY en bloque de definición de columna
 import { registerPrimaryKeyContextMenu } from '../blocks/extensions/primaryKeyContextMenu.js';
 
 // CONSTRAINTS DE COLUMNA
-
-// import {
-//   COLUMN_IDENTITY_DEFINITION,   COLUMN_IDENTITY_GENERATOR,   COLUMN_IDENTITY_ONCHANGE,
-//   COLUMN_NOT_NULL_DEFINITION,   COLUMN_NOT_NULL_GENERATOR,   COLUMN_NOT_NULL_ONCHANGE,
-//   COLUMN_UNIQUE_DEFINITION,     COLUMN_UNIQUE_GENERATOR,     COLUMN_UNIQUE_ONCHANGE,
-//   COLUMN_DEFAULT_DEFINITION,    COLUMN_DEFAULT_GENERATOR,    COLUMN_DEFAULT_ONCHANGE,
-//   COLUMN_CHECK_DEFINITION,      COLUMN_CHECK_GENERATOR,      COLUMN_CHECK_ONCHANGE,
-//   COLUMN_REFERENCES_DEFINITION, COLUMN_REFERENCES_GENERATOR, COLUMN_REFERENCES_ONCHANGE,
-// } from '../blocks/ddl_ColumnConstraints.js';
-
 import {
   columnIdentityBlockInit, COLUMN_IDENTITY_GENERATOR,
   columnNotNullBlockInit, COLUMN_NOT_NULL_GENERATOR,
@@ -68,12 +55,11 @@ import { TOP_DEFINITION, TOP_GENERATOR } from '../blocks/dml_TopBlock.js';
 import { registerExpressionContextMenu } from '../blocks/extensions/expressionContextMenu.js';
 
 
-// BLOQUE DE EXPRESSION dentro de funciones de agregación (sin NEXT, sin onchange) - ¡ELIMINADO!
+// BLOQUE DE EXPRESSION dentro de funciones de agregación (sin NEXT, sin onchange ¡ELIMINADO!
 // import { AGGREGATE_EXPRESSION_DEFINITION, AGGREGATE_EXPRESSION_GENERATOR, } from '../blocks/dml_aggregateFunctionsExpressionBlock.js';
 
 // BLOQUES DE FUNCIONES DE AGREGACIÓN
 import {
-  // SUM_DEFINITION,
   aggregateFunction_Sum_BlockDefinition, SUM_GENERATOR,
   aggregateFunction_Avg_BlockDefinition, AVG_GENERATOR,
   aggregateFunction_Count_BlockDefinition, COUNT_GENERATOR,
@@ -84,7 +70,6 @@ import {
   aggregateFunction_Count_Having_BlockDefinition, COUNT_HAVING_GENERATOR,
   aggregateFunction_Min_Having_BlockDefinition, MIN_HAVING_GENERATOR,
   aggregateFunction_Max_Having_BlockDefinition, MAX_HAVING_GENERATOR,
-  // AGGREGATE_FUNCTION_ONCHANGE // Onchange compartido para todos los bloques de funciones de agregación para añadir soporte de coma dinámica
   createAggregateFunctionOnChange
 } from '../blocks/dml_aggregateFunctionsBlock.js';
 
@@ -136,13 +121,6 @@ export const AppController = {
     //REGISTRO DE EXTENSION DE MENÚ CONTEXTUAL PARA PRIMARY KEY EN BLOQUE DE DEFINICIÓN DE COLUMNA
     registerPrimaryKeyContextMenu();
 
-    // REGISTRO DE EXTENSION DE MENÚ CONTEXTUAL PARA DEFINICIÓN DE COLUMNA
-    // Blockly.Extensions.registerMixin(
-    //   'column_definition_context_menu',
-    //   COLUMN_DEFINITION_CONTEXT_MENU.mixin
-    // );
-
-
     //REGISTRO DEL MENÚ CONTEXTUAL PARA EL BLOQUE DE EXPRESIÓN de SELECT (ANTES DE LOS BLOQUES)
     registerExpressionContextMenu();
 
@@ -165,15 +143,6 @@ export const AppController = {
     Blockly.defineBlocksWithJsonArray([
       // DDL
       CREATE_TABLE_DEFINITION,
-      // COLUMN_DEFINITION,
-
-      // Constraints de columna
-      // COLUMN_IDENTITY_DEFINITION,
-      // COLUMN_NOT_NULL_DEFINITION,
-      // COLUMN_UNIQUE_DEFINITION,
-      // COLUMN_DEFAULT_DEFINITION,
-      // COLUMN_CHECK_DEFINITION,
-      // COLUMN_REFERENCES_DEFINITION,
 
       // DML
       SELECT_DEFINITION,
@@ -199,17 +168,10 @@ export const AppController = {
 
     ]);
 
-    //============== Bloques con onchange 
-    // Bloques que requieren lógica adicional en el menú contextual o generación de código, se registran manualmente con Blockly.Blocks
+    //============== Bloques con onchange, estos bloques requieren lógica adicional en el menú contextual o generación de código, se registran manualmente con Blockly.Blocks
 
     // DDL: PRIMARY KEY (bloque de constraint para columna primaria)
     Blockly.Blocks['sql_column_primary_key'] = columnPrimaryKeyBlockInit(Blockly);
-
-    // // extensión al bloque columna normal
-    // Blockly.Blocks['sql_column_definition'] = {
-    //   ...columnDefinitionBlockInit(Blockly),
-    //   // la extensión se aplica en el init via Extensions.apply
-    // };
 
     // DDL: DEFINICIÓN DE COLUMNA 
     Blockly.Blocks['sql_column_definition'] = {
@@ -247,31 +209,26 @@ export const AppController = {
 
     //DML: FUNCIONES DE AGREGACIÓN (con onchange)
     Blockly.Blocks['sql_sum'] = {
-      // init: function () { this.jsonInit(SUM_DEFINITION); },
       ...aggregateFunction_Sum_BlockDefinition(Blockly),
       onchange: AGGREGATE_FUNCTION_ONCHANGE
     };
 
     Blockly.Blocks['sql_avg'] = {
-      // init: function () { this.jsonInit(AVG_DEFINITION); },
       ...aggregateFunction_Avg_BlockDefinition(Blockly),
       onchange: AGGREGATE_FUNCTION_ONCHANGE
     };
 
     Blockly.Blocks['sql_count'] = {
-      // init: function () { this.jsonInit(COUNT_DEFINITION); },
       ...aggregateFunction_Count_BlockDefinition(Blockly),
       onchange: AGGREGATE_FUNCTION_ONCHANGE
     };
 
     Blockly.Blocks['sql_min'] = {
-      // init: function () { this.jsonInit(MIN_DEFINITION); },
       ...aggregateFunction_Min_BlockDefinition(Blockly),
       onchange: AGGREGATE_FUNCTION_ONCHANGE
     };
 
     Blockly.Blocks['sql_max'] = {
-      // init: function () { this.jsonInit(MAX_DEFINITION); },
       ...aggregateFunction_Max_BlockDefinition(Blockly),
       onchange: AGGREGATE_FUNCTION_ONCHANGE
     };
@@ -315,21 +272,7 @@ export const AppController = {
       return CREATE_TABLE_GENERATOR(block, javascriptGenerator);
     };
 
-    // javascriptGenerator.forBlock['sql_column_definition'] = function (block) {
-    //   return COLUMN_GENERATOR(block, javascriptGenerator);
-    // };
-
     javascriptGenerator.forBlock['sql_column_primary_key'] = COLUMN_PRIMARY_KEY_GENERATOR;
-
-    javascriptGenerator.forBlock['sql_column_definition'] = COLUMN_GENERATOR;
-
-    // Generadores para constraints de columna
-    // javascriptGenerator.forBlock['sql_column_identity']    = COLUMN_IDENTITY_GENERATOR;
-    // javascriptGenerator.forBlock['sql_column_not_null']    = COLUMN_NOT_NULL_GENERATOR;
-    // javascriptGenerator.forBlock['sql_column_unique']      = COLUMN_UNIQUE_GENERATOR;
-    // javascriptGenerator.forBlock['sql_column_default']     = COLUMN_DEFAULT_GENERATOR;
-    // javascriptGenerator.forBlock['sql_column_check']       = COLUMN_CHECK_GENERATOR;
-    // javascriptGenerator.forBlock['sql_column_references']  = COLUMN_REFERENCES_GENERATOR;
 
     javascriptGenerator.forBlock['sql_column_definition'] = COLUMN_GENERATOR;
     javascriptGenerator.forBlock['sql_column_identity'] = COLUMN_IDENTITY_GENERATOR;
@@ -349,7 +292,7 @@ export const AppController = {
       return EXPRESSION_GENERATOR(block, javascriptGenerator);
     };
 
-    //¡ELIMINADO! Expresión dentro de los bloques de función de agregación
+    //¡ELIMINADO! Expresión dentro de los bloques de funciones de agregación
     // javascriptGenerator.forBlock['sql_aggregate_expression'] = function (block) {
     //   return AGGREGATE_EXPRESSION_GENERATOR(block, javascriptGenerator);
     // };
