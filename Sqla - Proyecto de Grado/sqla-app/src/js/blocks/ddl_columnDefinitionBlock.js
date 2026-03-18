@@ -1,43 +1,60 @@
-// === DEFINICIÓN (JSON) ===
+//=== DEFINICIÓN (JSON) ===
 export const COLUMN_DEFINITION = {
-  "type": "sql_column_definition",
-  "message0": "columna %1 tipo %2",
-  "args0": [
-    {
-      "type": "field_input",
-      "name": "COLUMN_NAME",
-      "text": "id"
-    },
-    {
-      "type": "field_dropdown",
-      "name": "DATA_TYPE",
-      "options": [
-        ["TEXT", "TEXT"],
-        ["INTEGER", "INTEGER"],
-        ["REAL", "REAL"],
-        ["NUMERIC", "NUMERIC"],
-        ["BLOB", "BLOB"]
-      ]
-    }
-  ],
-  "previousStatement": "ColumnDefinition", // Solo se conecta arriba/abajo con otros
-  "nextStatement": "ColumnDefinition",   // ...de su mismo tipo.
-  "colour": 210,
-  "tooltip": "Define una columna y su tipo de dato.",
-  "helpUrl": ""
+  type: 'sql_column_definition'
 };
 
-// === GENERADOR (JS) ===
+export function columnDefinitionBlockInit(Blockly) {
+  return {
+    init: function() {
+      this.appendValueInput('FIRST_CONSTRAINT')
+        .setCheck('ColumnConstraint')
+        .appendField('columna')
+        .appendField(new Blockly.FieldTextInput('id'), 'COLUMN_NAME')
+        .appendField('tipo')
+        .appendField(new Blockly.FieldDropdown([
+          ['INTEGER',  'INTEGER'], //(Tamaño)
+          ['FLOAT',    'FLOAT'], //(Tamaño)
+          ['VARCHAR',  'VARCHAR'], //(Tamaño)
+          ['CHAR',     'CHAR'], //(Tamaño)
+          ['BOOL',     'BOOL'],
+          ['DATE',     'DATE'],
+          ['DATETIME', 'DATETIME']
+        ]), 'DATA_TYPE');
+
+      this.setInputsInline(false);
+      this.setPreviousStatement(true, 'ColumnDefinition');
+      this.setNextStatement(true, 'ColumnDefinition');
+      this.setColour(210);
+      this.setTooltip('Define una columna y su tipo de dato.');
+      this.setHelpUrl('');
+
+      //Soporte a menú contextual para convertir a PRIMARY KEY
+      Blockly.Extensions.apply('column_to_pk_context_menu', this, false);
+    }
+  };
+}
+
 export const COLUMN_GENERATOR = function(block, generator) {
+  // const columnName = block.getFieldValue('COLUMN_NAME');
+  // const dataType   = block.getFieldValue('DATA_TYPE');
+
+  // const constraintParts = [];
+  // let current = block.getInputTargetBlock('FIRST_CONSTRAINT');
+  // while (current) {
+  //   const code = generator.blockToCode(current);
+  //   const constraintCode = Array.isArray(code) ? code[0] : code;
+  //   if (constraintCode) constraintParts.push(constraintCode.trim());
+  //   current = current.getInputTargetBlock('NEXT_CONSTRAINT');
+  // }
+
+  // const constraints = constraintParts.length > 0 ? ' ' + constraintParts.join(' ') : '';
+  // return `${columnName} ${dataType}${constraints}`;
+
   const columnName = block.getFieldValue('COLUMN_NAME');
-  const dataType = block.getFieldValue('DATA_TYPE');
-  
-  // Revisa si hay un bloque conectado debajo
-  const nextBlock = block.nextConnection && block.nextConnection.targetBlock();
-  
-  // Añade una coma si NO es el último bloque de la pila
-  const comma = nextBlock ? ',' : '';
-  
-  const code = `  ${columnName} ${dataType}${comma}\n`;
-  return code;
+  const dataType   = block.getFieldValue('DATA_TYPE');
+
+  // valueToCode resuelve toda la cadena recursivamente via NEXT_CONSTRAINT
+  const constraints = generator.valueToCode(block, 'FIRST_CONSTRAINT', 0);
+
+  return `${columnName} ${dataType}${constraints ? ' ' + constraints : ''}`;
 };

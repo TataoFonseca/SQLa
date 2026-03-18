@@ -8,7 +8,35 @@ import { apiService } from '../services/apiService.js';
 // ===Importe de Bloques===
 // BLOQUES DDL
 import { CREATE_TABLE_DEFINITION, CREATE_TABLE_GENERATOR } from '../blocks/ddl_CreateTableBlock.js';
-import { COLUMN_DEFINITION, COLUMN_GENERATOR } from '../blocks/ddl_ColumnDefinitionBlock.js';
+import { columnDefinitionBlockInit, COLUMN_GENERATOR } from '../blocks/ddl_ColumnDefinitionBlock.js';
+import { columnPrimaryKeyBlockInit, COLUMN_PRIMARY_KEY_GENERATOR } from '../blocks/ddl_ColumnPrimaryKey.js';
+
+// Menu contextual para constraints de columna
+// import { COLUMN_DEFINITION_CONTEXT_MENU } from '../blocks/extensions/columnDefinitionContextMenu.js';
+
+// Menu contextual para PRIMARY KEY en bloque de definición de columna
+import { registerPrimaryKeyContextMenu } from '../blocks/extensions/primaryKeyContextMenu.js';
+
+// CONSTRAINTS DE COLUMNA
+
+// import {
+//   COLUMN_IDENTITY_DEFINITION,   COLUMN_IDENTITY_GENERATOR,   COLUMN_IDENTITY_ONCHANGE,
+//   COLUMN_NOT_NULL_DEFINITION,   COLUMN_NOT_NULL_GENERATOR,   COLUMN_NOT_NULL_ONCHANGE,
+//   COLUMN_UNIQUE_DEFINITION,     COLUMN_UNIQUE_GENERATOR,     COLUMN_UNIQUE_ONCHANGE,
+//   COLUMN_DEFAULT_DEFINITION,    COLUMN_DEFAULT_GENERATOR,    COLUMN_DEFAULT_ONCHANGE,
+//   COLUMN_CHECK_DEFINITION,      COLUMN_CHECK_GENERATOR,      COLUMN_CHECK_ONCHANGE,
+//   COLUMN_REFERENCES_DEFINITION, COLUMN_REFERENCES_GENERATOR, COLUMN_REFERENCES_ONCHANGE,
+// } from '../blocks/ddl_ColumnConstraints.js';
+
+import {
+  columnIdentityBlockInit,    COLUMN_IDENTITY_GENERATOR,
+  columnNotNullBlockInit,     COLUMN_NOT_NULL_GENERATOR,
+  columnUniqueBlockInit,      COLUMN_UNIQUE_GENERATOR,
+  columnDefaultBlockInit,     COLUMN_DEFAULT_GENERATOR,
+  columnCheckBlockInit,       COLUMN_CHECK_GENERATOR,
+  columnReferencesBlockInit,  COLUMN_REFERENCES_GENERATOR,
+} from '../blocks/ddl_ColumnConstraints.js';
+
 
 // BLOQUES DML
 import { FROM_SIMPLE_DEFINITION, FROM_SIMPLE_GENERATOR } from '../blocks/dml_FromSimpleBlock.js'; // (Agregado) FROM simple sin soporte de JOINs (FromSimpleBlock.js)
@@ -114,7 +142,17 @@ export const AppController = {
     javascriptGenerator.ORDER_SUBTRACTION = 4;
     javascriptGenerator.ORDER_NONE = 99;
 
-    // REGISTRO DE EXTENSIONES DE MENÚ CONTEXTUAL
+    //REGISTRO DE EXTENSION DE MENÚ CONTEXTUAL PARA PRIMARY KEY EN BLOQUE DE DEFINICIÓN DE COLUMNA
+    registerPrimaryKeyContextMenu();
+
+    // REGISTRO DE EXTENSION DE MENÚ CONTEXTUAL PARA DEFINICIÓN DE COLUMNA
+    // Blockly.Extensions.registerMixin(
+    //   'column_definition_context_menu',
+    //   COLUMN_DEFINITION_CONTEXT_MENU.mixin
+    // );
+
+
+    //REGISTRO DEL MENÚ CONTEXTUAL PARA EL BLOQUE DE EXPRESIÓN de SELECT (ANTES DE LOS BLOQUES)
     registerExpressionContextMenu();
     registerFromContextMenu();
     registerFromJoinsContextMenu();
@@ -125,11 +163,21 @@ export const AppController = {
     //REGISTRO DEL MENÚ CONTEXTUAL DE EXTENSIÓN PARA EXPRESIONES EN HAVING
     registerHavingExpressionContextMenu();
 
-    // REGISTRO DE BLOQUES (JSON)
+
+    // PASO 2: REGISTRO DE BLOQUES (JSON) ===
+    //Bloques sin OnChange, se usa defineBlocksWithJsonArray
     Blockly.defineBlocksWithJsonArray([
       // DDL
       CREATE_TABLE_DEFINITION,
-      COLUMN_DEFINITION,
+      // COLUMN_DEFINITION,
+
+      // Constraints de columna
+      // COLUMN_IDENTITY_DEFINITION,
+      // COLUMN_NOT_NULL_DEFINITION,
+      // COLUMN_UNIQUE_DEFINITION,
+      // COLUMN_DEFAULT_DEFINITION,
+      // COLUMN_CHECK_DEFINITION,
+      // COLUMN_REFERENCES_DEFINITION,
 
       // DML
       FROM_SIMPLE_DEFINITION, //Agregado FROM simple sin soporte de JOINs
@@ -150,13 +198,37 @@ export const AppController = {
       COMPARISON_DEFINITION,
       QUANTIFIED_COMPARISON_DEFINITION,
       MEMBERSHIP_DEFINITION,
+
     ]);
 
-    
+    //============== Bloques con onchange 
+    // Bloques que requieren lógica adicional en el menú contextual o generación de código, se registran manualmente con Blockly.Blocks
 
-    // Bloques con onchange (coma dinámica) → registro manual con Blockly.Blocks
-    //DML: EXPRESSION CON EXPRESSION_ONCHANGE (MENÚ CONTEXTUAL para DISTINCT/TOP)
-    // Actualizado para usar el patrón init en lugar de jsonInit, para poder agregar el input NEXT necesario para la coma dinámica, pero el generador y el onchange se mantienen igual
+    // DDL: PRIMARY KEY (bloque de constraint para columna primaria)
+    Blockly.Blocks['sql_column_primary_key'] = columnPrimaryKeyBlockInit(Blockly);
+
+    // // extensión al bloque columna normal
+    // Blockly.Blocks['sql_column_definition'] = {
+    //   ...columnDefinitionBlockInit(Blockly),
+    //   // la extensión se aplica en el init via Extensions.apply
+    // };
+
+    // DDL: DEFINICIÓN DE COLUMNA 
+    Blockly.Blocks['sql_column_definition'] = {
+      ...columnDefinitionBlockInit(Blockly)
+    };
+
+    // DDL: CONSTRAINTS DE COLUMNA
+    Blockly.Blocks['sql_column_identity']   = columnIdentityBlockInit(Blockly);
+    Blockly.Blocks['sql_column_not_null']   = columnNotNullBlockInit(Blockly);
+    Blockly.Blocks['sql_column_unique']     = columnUniqueBlockInit(Blockly);
+    Blockly.Blocks['sql_column_default']    = columnDefaultBlockInit(Blockly);
+    Blockly.Blocks['sql_column_check']      = columnCheckBlockInit(Blockly);
+    Blockly.Blocks['sql_column_references'] = columnReferencesBlockInit(Blockly);
+
+
+    // (coma dinámica) → registro manual con Blockly.Blocks
+    // DML: EXPRESSION CON EXPRESSION_ONCHANGE (MENÚ CONTEXTUAL para DISTINCT/TOP), Actualizado para usar el patrón init en lugar de jsonInit, para poder agregar el input NEXT necesario para la coma dinámica, pero el generador y el onchange se mantienen igual
     Blockly.Blocks['sql_expression'] = {
       ...expressionBlockDefinition(Blockly),
       onchange: EXPRESSION_ONCHANGE
@@ -243,11 +315,32 @@ export const AppController = {
       return CREATE_TABLE_GENERATOR(block, javascriptGenerator);
     };
 
-    javascriptGenerator.forBlock['sql_column_definition'] = function (block) {
-      return COLUMN_GENERATOR(block, javascriptGenerator);
-    };
+    // javascriptGenerator.forBlock['sql_column_definition'] = function (block) {
+    //   return COLUMN_GENERATOR(block, javascriptGenerator);
+    // };
 
-    // REGISTRO DE GENERADORES DML
+    javascriptGenerator.forBlock['sql_column_primary_key'] = COLUMN_PRIMARY_KEY_GENERATOR;
+
+    javascriptGenerator.forBlock['sql_column_definition'] = COLUMN_GENERATOR;
+
+    // Generadores para constraints de columna
+    // javascriptGenerator.forBlock['sql_column_identity']    = COLUMN_IDENTITY_GENERATOR;
+    // javascriptGenerator.forBlock['sql_column_not_null']    = COLUMN_NOT_NULL_GENERATOR;
+    // javascriptGenerator.forBlock['sql_column_unique']      = COLUMN_UNIQUE_GENERATOR;
+    // javascriptGenerator.forBlock['sql_column_default']     = COLUMN_DEFAULT_GENERATOR;
+    // javascriptGenerator.forBlock['sql_column_check']       = COLUMN_CHECK_GENERATOR;
+    // javascriptGenerator.forBlock['sql_column_references']  = COLUMN_REFERENCES_GENERATOR;
+
+    javascriptGenerator.forBlock['sql_column_definition'] = COLUMN_GENERATOR;
+    javascriptGenerator.forBlock['sql_column_identity']   = COLUMN_IDENTITY_GENERATOR;
+    javascriptGenerator.forBlock['sql_column_not_null']   = COLUMN_NOT_NULL_GENERATOR;
+    javascriptGenerator.forBlock['sql_column_unique']     = COLUMN_UNIQUE_GENERATOR;
+    javascriptGenerator.forBlock['sql_column_default']    = COLUMN_DEFAULT_GENERATOR;
+    javascriptGenerator.forBlock['sql_column_check']      = COLUMN_CHECK_GENERATOR;
+    javascriptGenerator.forBlock['sql_column_references'] = COLUMN_REFERENCES_GENERATOR;
+
+
+    // === PASO 4: REGISTRO DE GENERADORES DML ===
     javascriptGenerator.forBlock['sql_select'] = function (block) {
       return SELECT_GENERATOR(block, javascriptGenerator);
     };

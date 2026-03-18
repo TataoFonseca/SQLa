@@ -100,9 +100,17 @@
 
   <!-- TOOLBOX -->
   <xml id="toolbox" style="display:none">
-    <category name="Sentencias DDL" colour="260">
+    <category name="Crear tabla en base de datos" colour="260">
       <block type="sql_create_table"></block>
       <block type="sql_column_definition"></block>
+       <!-- <category name="Constraints de Columna" colour="160"> -->
+        <!-- <block type="sql_column_identity"></block> --> <!-- Deshabilitado porque no es el mismo para todos los motores y puede resultar confuso -->
+        <block type="sql_column_not_null"></block>
+        <block type="sql_column_unique"></block>
+        <block type="sql_column_default"></block>
+        <block type="sql_column_check"></block>
+        <block type="sql_column_references"></block>
+      <!-- </category> -->
     </category>
     <category name="Consultar a Base de datos" colour="160">
       <label text="— SELECT —" web-class="toolbox-label"></label>
@@ -127,20 +135,23 @@
 
       <category name="Funciones de Agregación" colour="120">
 
-        <!-- SUM que usa extensión de agregación (menú contextual) -->
-        <block type="sql_sum"></block>
+        <!-- SUM con Expression que usa extensión de agregación -->
+        <block type="sql_sum">
+        </block>
 
-        <!-- AVG que usa extensión de agregación (menú contextual) -->
+        <!-- AVG con Expression que usa extensión de agregación -->
         <block type="sql_avg"></block>
 
-        <!-- COUNT que usa extensión de agregación (menú contextual)-->
+        <!-- COUNT con Expression que usa extensión de agregación -->
         <block type="sql_count"></block>
 
-        <!-- MIN que usa extensión de agregación (menú contextual) -->
-        <block type="sql_min"></block>
+        <!-- MIN con Expression que usa extensión de agregación -->
+        <block type="sql_min">
+        </block>
 
-        <!-- MAX que usa extensión de agregación (menú contextual) -->
-        <block type="sql_max"></block>
+        <!-- MAX con Expression que usa extensión de agregación -->
+        <block type="sql_max">
+        </block>
 
       </category>
 
