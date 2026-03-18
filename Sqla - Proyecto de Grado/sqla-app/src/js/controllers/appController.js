@@ -863,8 +863,9 @@ export const AppController = {
     const mermaidDiv = document.getElementById('mermaidDiv');
     if (!mermaidDiv || mermaidDiv.style.display === 'none') return;
 
-    const diagram = this.buildMermaidFromWorkspace();
-    if (!diagram) {
+    const tables = this.extractTablesFromWorkspace();
+
+    if (tables.length === 0) {
       mermaidDiv.innerHTML = `
       <h2>Diagrama ERD</h2>
       <p style="color: rgba(255,255,255,0.4); font-size: 0.9rem; margin-top: 12px;">
@@ -876,24 +877,231 @@ export const AppController = {
 
     mermaidDiv.innerHTML = `
     <h2>Diagrama ERD</h2>
-    <div id="mermaidDiagram"></div>
+    <div id="erdDiagram" style="
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      padding: 16px;
+      align-items: flex-start;
+    ">
+      ${tables.map(t => this.renderTableCard(t)).join('')}
+    </div>
   `;
 
-    try {
-      const renderId = 'mermaid-ws-' + Date.now();
-      const { svg } = await mermaid.render(renderId, diagram);
-      document.getElementById('mermaidDiagram').innerHTML = svg;
-    } catch (err) {
-      console.error('Error renderizando Mermaid desde workspace:', err);
-      mermaidDiv.innerHTML = `
-      <h2>Diagrama ERD</h2>
-      <pre style="color: #ff5555; font-size: 0.8rem;">Error al renderizar.\n${err.message}</pre>
-      <details style="margin-top: 8px;">
-        <summary style="color: rgba(255,255,255,0.4); font-size: 0.8rem; cursor: pointer;">Ver código Mermaid</summary>
-        <pre style="color: #888; font-size: 0.78rem; margin-top: 6px;">${diagram}</pre>
-      </details>
-    `;
+  },
+
+  extractTablesFromWorkspace: function () {
+    const allBlocks = this.workspace.getAllBlocks(false);
+    const createTableBlocks = allBlocks.filter(b => b.type === 'sql_create_table');
+    const tables = [];
+
+    function mapType(t) {
+      const u = (t || '').toUpperCase();
+      if (u === 'INTEGER') return 'INT';
+      if (u === 'FLOAT') return 'FLOAT';
+      if (u === 'BOOL') return 'BOOL';
+      if (u === 'DATE') return 'DATE';
+      if (u === 'DATETIME') return 'DATETIME';
+      return u; // VARCHAR, CHAR, etc.
     }
+
+    for (const tableBlock of createTableBlocks) {
+      const tableName = tableBlock.getFieldValue('TABLE_NAME') || 'tabla';
+      const columns = [];
+
+      let colBlock = tableBlock.getInputTargetBlock('COLUMNS');
+      while (colBlock) {
+        const isPK = colBlock.type === 'sql_column_primary_key';
+        const isCol = colBlock.type === 'sql_column_definition';
+
+        if (isCol || isPK) {
+          const colName = colBlock.getFieldValue('COLUMN_NAME') || 'col';
+          const dataType = mapType(colBlock.getFieldValue('DATA_TYPE'));
+
+          const col = {
+            name: colName,
+            type: dataType,
+            pk: isPK,
+            notNull: isPK,
+            unique: false,
+            fk: null,
+            default: null,
+            check: null,
+          };
+
+          // Leer constraints encadenados lateralmente
+          if (isCol) {
+            let constraint = colBlock.getInputTargetBlock('FIRST_CONSTRAINT');
+            while (constraint) {
+              switch (constraint.type) {
+                case 'sql_column_not_null':
+                  col.notNull = true;
+                  break;
+                case 'sql_column_unique':
+                  col.unique = true;
+                  break;
+                case 'sql_column_default':
+                  col.default = constraint.getFieldValue('DEFAULT_VALUE');
+                  break;
+                case 'sql_column_check':
+                  col.check = constraint.getFieldValue('CHECK_CONDITION');
+                  break;
+                case 'sql_column_references':
+                  col.fk = {
+                    table: constraint.getFieldValue('REF_TABLE'),
+                    column: constraint.getFieldValue('REF_COLUMN'),
+                  };
+                  break;
+              }
+              constraint = constraint.getInputTargetBlock('NEXT_CONSTRAINT');
+            }
+          }
+
+          columns.push(col);
+        }
+
+        colBlock = colBlock.getNextBlock();
+      }
+
+      tables.push({ name: tableName, columns });
+    }
+
+    return tables;
+  },
+
+  renderTableCard: function (table) {
+    const headerBg = 'rgba(80, 60, 180, 0.85)';
+    const cardBg = 'rgba(30, 30, 50, 0.95)';
+    const borderColor = 'rgba(120, 100, 255, 0.5)';
+    const dividerColor = 'rgba(255,255,255,0.08)';
+
+    const colRows = table.columns.map(col => {
+      // Icono de tipo
+      let icon = '○';
+      let iconColor = 'rgba(255,255,255,0.35)';
+      if (col.pk) { icon = '🔑'; iconColor = '#f5c542'; }
+      else if (col.fk) { icon = '🔗'; iconColor = '#4fc3f7'; }
+      else if (col.unique) { icon = '◆'; iconColor = '#ce93d8'; }
+
+      // Badges de constraints
+      const badges = [];
+      if (col.notNull && !col.pk) badges.push(`<span style="
+      font-size: 0.62rem;
+      background: rgba(255,100,100,0.2);
+      color: #ff8a80;
+      border-radius: 3px;
+      padding: 1px 4px;
+      margin-left: 4px;
+    ">NN</span>`);
+      if (col.unique) badges.push(`<span style="
+      font-size: 0.62rem;
+      background: rgba(180,100,255,0.2);
+      color: #ce93d8;
+      border-radius: 3px;
+      padding: 1px 4px;
+      margin-left: 4px;
+    ">UQ</span>`);
+      if (col.default !== null) badges.push(`<span style="
+      font-size: 0.62rem;
+      background: rgba(100,200,100,0.2);
+      color: #a5d6a7;
+      border-radius: 3px;
+      padding: 1px 4px;
+      margin-left: 4px;
+    ">DEF</span>`);
+      if (col.check) badges.push(`<span style="
+      font-size: 0.62rem;
+      background: rgba(255,200,50,0.2);
+      color: #fff176;
+      border-radius: 3px;
+      padding: 1px 4px;
+      margin-left: 4px;
+    ">CHK</span>`);
+      if (col.fk) badges.push(`<span style="
+      font-size: 0.62rem;
+      background: rgba(70,180,255,0.2);
+      color: #4fc3f7;
+      border-radius: 3px;
+      padding: 1px 4px;
+      margin-left: 4px;
+    ">FK→${col.fk.table}</span>`);
+
+      return `
+      <tr style="border-top: 1px solid ${dividerColor};">
+        <td style="padding: 5px 10px; width: 22px; text-align: center;">
+          <span style="color: ${iconColor}; font-size: 0.85rem;">${icon}</span>
+        </td>
+        <td style="
+          padding: 5px 6px;
+          color: ${col.pk ? '#f5c542' : 'rgba(255,255,255,0.85)'};
+          font-family: 'Fira Code', monospace;
+          font-size: 0.82rem;
+          white-space: nowrap;
+        ">
+          ${col.name}
+          ${badges.join('')}
+        </td>
+        <td style="
+          padding: 5px 10px;
+          color: rgba(255,255,255,0.4);
+          font-family: 'Fira Code', monospace;
+          font-size: 0.78rem;
+          white-space: nowrap;
+          text-align: right;
+        ">${col.type}</td>
+      </tr>
+    `;
+    }).join('');
+
+    const emptyRow = `
+    <tr>
+      <td colspan="3" style="
+        padding: 10px;
+        color: rgba(255,255,255,0.25);
+        font-size: 0.8rem;
+        text-align: center;
+        font-style: italic;
+      ">Sin columnas</td>
+    </tr>
+  `;
+
+    return `
+    <div style="
+      border: 1px solid ${borderColor};
+      border-radius: 8px;
+      overflow: hidden;
+      min-width: 220px;
+      max-width: 380px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+      background: ${cardBg};
+      flex-shrink: 0;
+    ">
+      <!-- Header -->
+      <div style="
+        background: ${headerBg};
+        padding: 8px 12px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        border-bottom: 1px solid ${borderColor};
+      ">
+        <span style="font-size: 1rem;">📋</span>
+        <span style="
+          color: #fff;
+          font-weight: 600;
+          font-family: 'Fira Code', monospace;
+          font-size: 0.9rem;
+          letter-spacing: 0.03em;
+        ">${table.name}</span>
+      </div>
+      <!-- Columnas -->
+      <table style="width: 100%; border-collapse: collapse;">
+        <tbody>
+          ${table.columns.length > 0 ? colRows : emptyRow}
+        </tbody>
+      </table>
+    </div>
+  `;
   },
 
   buildMermaidFromWorkspace: function () {
