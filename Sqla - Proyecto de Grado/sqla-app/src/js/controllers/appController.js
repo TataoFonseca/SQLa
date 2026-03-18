@@ -28,19 +28,24 @@ import { registerPrimaryKeyContextMenu } from '../blocks/extensions/primaryKeyCo
 // } from '../blocks/ddl_ColumnConstraints.js';
 
 import {
-  columnIdentityBlockInit,    COLUMN_IDENTITY_GENERATOR,
-  columnNotNullBlockInit,     COLUMN_NOT_NULL_GENERATOR,
-  columnUniqueBlockInit,      COLUMN_UNIQUE_GENERATOR,
-  columnDefaultBlockInit,     COLUMN_DEFAULT_GENERATOR,
-  columnCheckBlockInit,       COLUMN_CHECK_GENERATOR,
-  columnReferencesBlockInit,  COLUMN_REFERENCES_GENERATOR,
+  columnIdentityBlockInit, COLUMN_IDENTITY_GENERATOR,
+  columnNotNullBlockInit, COLUMN_NOT_NULL_GENERATOR,
+  columnUniqueBlockInit, COLUMN_UNIQUE_GENERATOR,
+  columnDefaultBlockInit, COLUMN_DEFAULT_GENERATOR,
+  columnCheckBlockInit, COLUMN_CHECK_GENERATOR,
+  columnReferencesBlockInit, COLUMN_REFERENCES_GENERATOR,
 } from '../blocks/ddl_ColumnConstraints.js';
 
 
 // BLOQUES DML
+import { SELECT_DEFINITION, SELECT_GENERATOR, } from '../blocks/dml_SelectBlock.js';
+
 import { FROM_SIMPLE_DEFINITION, FROM_SIMPLE_GENERATOR } from '../blocks/dml_FromSimpleBlock.js'; // (Agregado) FROM simple sin soporte de JOINs (FromSimpleBlock.js)
 import { FROM_DEFINITION, FROM_GENERATOR } from '../blocks/dml_FromBlock.js'; // FROM con soporte de JOINs (FromBlock.js)
-import { SELECT_DEFINITION, SELECT_GENERATOR, } from '../blocks/dml_SelectBlock.js';
+
+import { WHERE_DEFINITION, WHERE_GENERATOR } from '../blocks/dml_WhereBlock.js';
+import { registerWhereContextMenu } from '../blocks/extensions/whereContextMenu.js';
+
 
 // BLOQUE DE MENÚ CONTEXTUAL PARA FROM (FromSimpleBlock.js y FromBlock.js)
 import { registerFromContextMenu, registerFromJoinsContextMenu } from '../blocks/extensions/fromContextMenu.js';
@@ -145,6 +150,9 @@ export const AppController = {
     registerFromContextMenu();
     registerFromJoinsContextMenu();
 
+    //REGISTRO DEL MENÚ CONTEXTUAL PARA WHERE
+    registerWhereContextMenu();
+
     //REGISTRO DEL MENÚ CONTEXTUAL DE EXTENSIÓN PARA *--*EXPRESIONES EN*--* FUNCIONES DE AGREGACIÓN
     registerAggregateFunctionContextMenu();
 
@@ -168,9 +176,11 @@ export const AppController = {
       // COLUMN_REFERENCES_DEFINITION,
 
       // DML
+      SELECT_DEFINITION,
+      WHERE_DEFINITION, //Agregado WHERE (WhereBlock.js)
       FROM_SIMPLE_DEFINITION, //Agregado FROM simple sin soporte de JOINs
       FROM_DEFINITION,
-      SELECT_DEFINITION,
+
 
       // DML: DISTINCT Y TOP
       DISTINCT_DEFINITION, // Ahora es flag global, sin EXPRESSION input
@@ -207,11 +217,11 @@ export const AppController = {
     };
 
     // DDL: CONSTRAINTS DE COLUMNA
-    Blockly.Blocks['sql_column_identity']   = columnIdentityBlockInit(Blockly);
-    Blockly.Blocks['sql_column_not_null']   = columnNotNullBlockInit(Blockly);
-    Blockly.Blocks['sql_column_unique']     = columnUniqueBlockInit(Blockly);
-    Blockly.Blocks['sql_column_default']    = columnDefaultBlockInit(Blockly);
-    Blockly.Blocks['sql_column_check']      = columnCheckBlockInit(Blockly);
+    Blockly.Blocks['sql_column_identity'] = columnIdentityBlockInit(Blockly);
+    Blockly.Blocks['sql_column_not_null'] = columnNotNullBlockInit(Blockly);
+    Blockly.Blocks['sql_column_unique'] = columnUniqueBlockInit(Blockly);
+    Blockly.Blocks['sql_column_default'] = columnDefaultBlockInit(Blockly);
+    Blockly.Blocks['sql_column_check'] = columnCheckBlockInit(Blockly);
     Blockly.Blocks['sql_column_references'] = columnReferencesBlockInit(Blockly);
 
 
@@ -234,7 +244,7 @@ export const AppController = {
     };
 
     const AGGREGATE_FUNCTION_ONCHANGE = createAggregateFunctionOnChange(Blockly);
-    
+
     //DML: FUNCIONES DE AGREGACIÓN (con onchange)
     Blockly.Blocks['sql_sum'] = {
       // init: function () { this.jsonInit(SUM_DEFINITION); },
@@ -322,11 +332,11 @@ export const AppController = {
     // javascriptGenerator.forBlock['sql_column_references']  = COLUMN_REFERENCES_GENERATOR;
 
     javascriptGenerator.forBlock['sql_column_definition'] = COLUMN_GENERATOR;
-    javascriptGenerator.forBlock['sql_column_identity']   = COLUMN_IDENTITY_GENERATOR;
-    javascriptGenerator.forBlock['sql_column_not_null']   = COLUMN_NOT_NULL_GENERATOR;
-    javascriptGenerator.forBlock['sql_column_unique']     = COLUMN_UNIQUE_GENERATOR;
-    javascriptGenerator.forBlock['sql_column_default']    = COLUMN_DEFAULT_GENERATOR;
-    javascriptGenerator.forBlock['sql_column_check']      = COLUMN_CHECK_GENERATOR;
+    javascriptGenerator.forBlock['sql_column_identity'] = COLUMN_IDENTITY_GENERATOR;
+    javascriptGenerator.forBlock['sql_column_not_null'] = COLUMN_NOT_NULL_GENERATOR;
+    javascriptGenerator.forBlock['sql_column_unique'] = COLUMN_UNIQUE_GENERATOR;
+    javascriptGenerator.forBlock['sql_column_default'] = COLUMN_DEFAULT_GENERATOR;
+    javascriptGenerator.forBlock['sql_column_check'] = COLUMN_CHECK_GENERATOR;
     javascriptGenerator.forBlock['sql_column_references'] = COLUMN_REFERENCES_GENERATOR;
 
 
@@ -350,6 +360,11 @@ export const AppController = {
     };
     javascriptGenerator.forBlock['sql_from'] = function (block) {
       return FROM_GENERATOR(block, javascriptGenerator);
+    };
+
+    //Registro de generadores de WHERE
+    javascriptGenerator.forBlock['sql_where'] = function (block) {
+      return WHERE_GENERATOR(block, javascriptGenerator);
     };
 
     javascriptGenerator.forBlock['sql_join'] = function (block) {
