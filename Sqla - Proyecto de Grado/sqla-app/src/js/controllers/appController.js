@@ -96,6 +96,7 @@ mermaid.initialize({
 
 export const AppController = {
   workspace: null,
+  _mermaidDebounceTimer: null,
 
   init: function () {
 
@@ -490,6 +491,13 @@ export const AppController = {
     this.workspace.addChangeListener(() => {
       const code = javascriptGenerator.workspaceToCode(this.workspace);
       console.log('SQL generado:', code);
+
+      // ERD en tiempo real desde bloques CREATE TABLE
+      clearTimeout(this._mermaidDebounceTimer);
+      this._mermaidDebounceTimer = setTimeout(() => {
+        this.updateMermaidFromWorkspace();
+      }, 400);
+
     });
 
     // === EVENTOS DE INTERFAZ ===
@@ -846,6 +854,142 @@ export const AppController = {
       if (!tables[rel.from]) ensureTable(rel.from);
       if (!tables[rel.to]) ensureTable(rel.to);
       diagram += `  ${rel.from} ||--o{ ${rel.to} : "${rel.label}"\n`;
+    }
+
+    return diagram;
+  },
+
+  updateMermaidFromWorkspace: async function () {
+    const mermaidDiv = document.getElementById('mermaidDiv');
+    if (!mermaidDiv || mermaidDiv.style.display === 'none') return;
+
+    const diagram = this.buildMermaidFromWorkspace();
+    if (!diagram) {
+      mermaidDiv.innerHTML = `
+      <h2>Diagrama ERD</h2>
+      <p style="color: rgba(255,255,255,0.4); font-size: 0.9rem; margin-top: 12px;">
+        Agrega un bloque CREATE TABLE para ver el diagrama.
+      </p>
+    `;
+      return;
+    }
+
+    mermaidDiv.innerHTML = `
+    <h2>Diagrama ERD</h2>
+    <div id="mermaidDiagram"></div>
+  `;
+
+    try {
+      const renderId = 'mermaid-ws-' + Date.now();
+      const { svg } = await mermaid.render(renderId, diagram);
+      document.getElementById('mermaidDiagram').innerHTML = svg;
+    } catch (err) {
+      console.error('Error renderizando Mermaid desde workspace:', err);
+      mermaidDiv.innerHTML = `
+      <h2>Diagrama ERD</h2>
+      <pre style="color: #ff5555; font-size: 0.8rem;">Error al renderizar.\n${err.message}</pre>
+      <details style="margin-top: 8px;">
+        <summary style="color: rgba(255,255,255,0.4); font-size: 0.8rem; cursor: pointer;">Ver código Mermaid</summary>
+        <pre style="color: #888; font-size: 0.78rem; margin-top: 6px;">${diagram}</pre>
+      </details>
+    `;
+    }
+  },
+
+  buildMermaidFromWorkspace: function () {
+    const allBlocks = this.workspace.getAllBlocks(false);
+    const createTableBlocks = allBlocks.filter(b => b.type === 'sql_create_table');
+
+    if (createTableBlocks.length === 0) return null;
+
+    const tables = {};   // { tableName: [{ name, type, pk, nullable }] }
+    const relations = []; // [{ from, to, label }]
+
+    function mapType(blocklyType) {
+      const t = (blocklyType || '').toUpperCase();
+      if (['INTEGER', 'FLOAT'].includes(t)) return t.toLowerCase();
+      if (t === 'VARCHAR' || t === 'CHAR') return 'string';
+      if (t === 'BOOL') return 'boolean';
+      if (t === 'DATE') return 'date';
+      if (t === 'DATETIME') return 'datetime';
+      return 'string';
+    }
+
+    for (const tableBlock of createTableBlocks) {
+      const tableName = tableBlock.getFieldValue('TABLE_NAME') || 'tabla';
+      tables[tableName] = [];
+
+      let colBlock = tableBlock.getInputTargetBlock('COLUMNS');
+      while (colBlock) {
+        const isPK = colBlock.type === 'sql_column_primary_key';
+        const isCol = colBlock.type === 'sql_column_definition';
+
+        if (isCol || isPK) {
+          const colName = colBlock.getFieldValue('COLUMN_NAME') || 'col';
+          const dataType = colBlock.getFieldValue('DATA_TYPE') || 'string';
+          const col = {
+            name: colName,
+            type: mapType(dataType),
+            pk: isPK,
+            nullable: true
+          };
+
+          // Leer constraints encadenados lateralmente
+          if (isCol) {
+            let constraint = colBlock.getInputTargetBlock('FIRST_CONSTRAINT');
+            while (constraint) {
+              if (constraint.type === 'sql_column_not_null') col.nullable = false;
+              if (constraint.type === 'sql_column_unique') col.unique = true;
+              if (constraint.type === 'sql_column_references') {
+                const refTable = constraint.getFieldValue('REF_TABLE');
+                const refCol = constraint.getFieldValue('REF_COLUMN');
+                if (refTable) {
+                  relations.push({
+                    from: tableName,
+                    to: refTable,
+                    label: `${colName} → ${refCol || '?'}`
+                  });
+                }
+              }
+              constraint = constraint.getInputTargetBlock('NEXT_CONSTRAINT');
+            }
+          }
+
+          if (isPK) col.nullable = false;
+          tables[tableName].push(col);
+        }
+
+        colBlock = colBlock.getNextBlock();
+      }
+    }
+
+    if (Object.keys(tables).length === 0) return null;
+
+    // Construir string Mermaid
+    let diagram = 'erDiagram\n';
+
+    for (const [name, columns] of Object.entries(tables)) {
+      diagram += `  ${name} {\n`;
+      if (columns.length === 0) {
+        diagram += `    string id\n`;
+      } else {
+        for (const col of columns) {
+          const pkMark = col.pk ? ' PK' : '';
+          const fkMark = !col.pk && relations.some(r => r.from === name && r.label.startsWith(col.name))
+            ? ' FK' : '';
+          diagram += `    ${col.type} ${col.name}${pkMark}${fkMark}\n`;
+        }
+      }
+      diagram += `  }\n`;
+    }
+
+    for (const rel of relations) {
+      // Asegurar que la tabla referenciada existe aunque no esté definida aún
+      if (!tables[rel.to]) {
+        diagram += `  ${rel.to} {\n    string id\n  }\n`;
+        tables[rel.to] = []; // evitar duplicados
+      }
+      diagram += `  ${rel.from} }o--|| ${rel.to} : "${rel.label}"\n`;
     }
 
     return diagram;
