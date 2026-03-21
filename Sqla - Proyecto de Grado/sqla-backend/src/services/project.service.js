@@ -47,3 +47,21 @@ export async function getQueriesBySession(sessionId) {
 
   return result.recordset;
 }
+
+/* Obtener consultas para exportación (Ordenadas por creación ASC) */
+export async function getQueriesForExport(sessionId) {
+  const pool = await getPool();
+
+  const result = await pool.request()
+    .input("sessionId", sessionId)
+    .query(`
+      SELECT 
+        sql_text as sql,
+        transformed_sql as transformedSQL
+      FROM queries
+      WHERE session_id = @sessionId
+      ORDER BY created_at ASC
+    `);
+
+  return result.recordset;
+}

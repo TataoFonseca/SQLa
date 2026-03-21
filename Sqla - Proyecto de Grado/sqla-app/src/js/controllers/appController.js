@@ -423,6 +423,8 @@ export const AppController = {
     const openBdMenu = document.getElementById('openBdMenu');
     const exportBdMenu = document.getElementById('exportBdMenu');
     const executeBtn = document.getElementById('executeBtn');
+    const exportSqlBtn = document.getElementById('exportSqlBtn');
+    const exportJsonBtn = document.getElementById('exportJsonBtn');
 
     // === Inicializar Blockly ===
     this.workspace = Blockly.inject(blocklyDiv, {
@@ -520,6 +522,65 @@ export const AppController = {
     document.addEventListener('click', () => {
       openBdMenu?.classList.remove('active');
       exportBdMenu?.classList.remove('active');
+    });
+
+    // ============================================================
+    // BOTONES DE EXPORTACIÓN
+    // ============================================================
+    exportSqlBtn?.addEventListener('click', async (e) => {
+      e.preventDefault();
+      try {
+        const { sessionId } = apiService.getCurrentSession();
+        if (!sessionId) {
+          alert('No hay una sesión activa para exportar.');
+          return;
+        }
+
+        const sqlText = await apiService.exportSessionSQL(sessionId);
+        
+        if (!sqlText || sqlText.trim().length === 0) {
+          alert('Aún no has ejecutado ninguna consulta o el historial está vacío.');
+          return;
+        }
+
+        const blob = new Blob([sqlText], { type: 'application/sql' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `session_${sessionId}.sql`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      } catch (err) {
+        console.error('Error exportando SQL:', err);
+        alert('Ocurrió un error al exportar SQL: ' + err.message);
+      }
+    });
+
+    exportJsonBtn?.addEventListener('click', (e) => {
+      e.preventDefault();
+      try {
+        const state = Blockly.serialization.workspaces.save(this.workspace);
+        const jsonText = JSON.stringify(state, null, 2);
+        
+        const blob = new Blob([jsonText], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        
+        const { sessionId } = apiService.getCurrentSession();
+        const suffix = sessionId ? `_${sessionId}` : '';
+        
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `workspace${suffix}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      } catch(err) {
+        console.error('Error exportando JSON:', err);
+        alert('Ocurrió un error: ' + err.message);
+      }
     });
 
     // ============================================================
