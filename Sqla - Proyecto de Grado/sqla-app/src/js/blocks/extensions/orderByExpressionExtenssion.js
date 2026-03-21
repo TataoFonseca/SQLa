@@ -1,9 +1,6 @@
 // sqla-app/src/js/blocks/extensions/orderByExpressionExtension.js
-// Extensión onchange para sql_orderby_expression.
-// Detecta si el bloque está conectado a sql_order_by o a otro
-// sql_orderby_expression y añade/quita el dropdown DIRECTION (ASC/DESC).
-
-// sqla-app/src/js/blocks/extensions/orderByExpressionExtension.js
+// Extensión onchange para sql_expression.
+// Detecta si el bloque dml_ExpressionBlock.js (sql_expression) está conectado a sql_order_by y añade el dropdown DIRECTION (ASC/DESC).
 
 import * as Blockly from 'blockly';
 
@@ -18,8 +15,20 @@ function getRootStatementParent(block) {
 }
 
 function isInOrderByChain(block) {
-    const root = getRootStatementParent(block);
-    return root !== null && root.type === 'sql_order_by';
+    // const root = getRootStatementParent(block);
+    // return root !== null && root.type === 'sql_order_by';
+    let current = block;
+    while (true) {
+        // ¿El bloque actual se conecta a su padre via outputConnection?
+        if (!current.outputConnection?.targetConnection) return false;
+
+        const parent = current.outputConnection.targetConnection.getSourceBlock();
+        if (!parent) return false;
+        if (parent.type === 'sql_order_by') return true;
+
+        // El padre también es una expresión encadenada, seguir subiendo
+        current = parent;
+    }
 }
 
 export function registerOrderByExpressionExtension() {

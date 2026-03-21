@@ -17,7 +17,7 @@ export function expressionBlockDefinition(Blockly) {
       this.setColour(160);
       this.setTooltip('Nombre de columna. Click derecho para agregar DISTINCT o TOP');
       this.setHelpUrl('');
-      Blockly.Extensions.apply('expression_context_menu', this, false); //Extension del menu contextual para agregar DISTINCT o TOP
+      // Blockly.Extensions.apply('expression_context_menu', this, false); //Extension del menu contextual para agregar DISTINCT o TOP
       Blockly.Extensions.apply('order_by_expression_extension', this, false); //Extension para poder insertarse dentro del bloque ORDER BY
     }
   };

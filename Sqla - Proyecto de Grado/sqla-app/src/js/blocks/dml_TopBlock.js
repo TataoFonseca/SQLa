@@ -13,26 +13,24 @@ export const TOP_DEFINITION = {
     },
     {
       "type": "input_value",
-      "name": "EXPRESSION",
-      "check": ["Expression", "Column"],
+      // "name": "EXPRESSION",
+      "name": "NEXT",
+      // "check": ["Expression", "Column"],
+      "check": ["Expression", "Column", "Aggregate"],
       "align": "RIGHT"
     }
   ],
   "inputsInline": false,
-  "output": "TopExpression",
+  // "output": "TopExpression",
+  "output": "TopFlag",
   "colour": 230,
-  "tooltip": "Limita el número de filas retornadas",
+  "tooltip": "Limita el número de filas a retornar",
   "helpUrl": ""
 };
 
 export const TOP_GENERATOR = function (block, generator) {
   const number = block.getFieldValue('NUMBER');
-  const expression = generator.valueToCode(block, 'EXPRESSION', generator.ORDER_ATOMIC) || '';
-
-  if (!expression) {
-    return ['', generator.ORDER_NONE];
-  }
-
-  const code = 'TOP (' + number + ') ' + expression;
-  return [code, generator.ORDER_ATOMIC];
+  const next = generator.valueToCode(block, 'NEXT', generator.ORDER_ATOMIC);
+  if (!next) return [`TOP (${number})`, generator.ORDER_ATOMIC];
+  return [`TOP (${number}) ${next}`, generator.ORDER_ATOMIC];
 };

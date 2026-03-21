@@ -26,7 +26,7 @@ import {
 
 
 // BLOQUES DML
-import { SELECT_DEFINITION, SELECT_GENERATOR, } from '../blocks/dml_SelectBlock.js';
+import { selectBlockDefinition, SELECT_GENERATOR, } from '../blocks/dml_SelectBlock.js';
 
 import { FROM_SIMPLE_DEFINITION, FROM_SIMPLE_GENERATOR } from '../blocks/dml_FromSimpleBlock.js'; // (Agregado) FROM simple sin soporte de JOINs (FromSimpleBlock.js)
 import { FROM_DEFINITION, FROM_GENERATOR } from '../blocks/dml_FromBlock.js'; // FROM con soporte de JOINs (FromBlock.js)
@@ -50,7 +50,7 @@ import {
 import { DISTINCT_DEFINITION, DISTINCT_GENERATOR } from '../blocks/dml_DistinctBlock.js';
 import { TOP_DEFINITION, TOP_GENERATOR } from '../blocks/dml_TopBlock.js';
 
-import { registerExpressionContextMenu } from '../blocks/extensions/expressionContextMenu.js';
+import { registerSelectContextMenu } from '../blocks/extensions/selectContextMenu.js';
 
 
 // BLOQUE DE EXPRESSION dentro de funciones de agregación (sin NEXT, sin onchange ¡ELIMINADO!
@@ -142,7 +142,7 @@ export const AppController = {
     registerPrimaryKeyContextMenu();
 
     //REGISTRO DEL MENÚ CONTEXTUAL PARA EL BLOQUE DE EXPRESIÓN de SELECT (ANTES DE LOS BLOQUES)
-    registerExpressionContextMenu();
+    registerSelectContextMenu();
     registerFromContextMenu();
     registerFromJoinsContextMenu();
 
@@ -166,7 +166,7 @@ export const AppController = {
       CREATE_TABLE_DEFINITION,
 
       // DML
-      SELECT_DEFINITION,
+      // SELECT_DEFINITION, //Eliminado, estructura cambiada a init, para ser compatible con Extensiones 
       WHERE_DEFINITION, //Agregado WHERE (WhereBlock.js)
       FROM_SIMPLE_DEFINITION, //Agregado FROM simple sin soporte de JOINs
       FROM_DEFINITION,
@@ -191,6 +191,8 @@ export const AppController = {
 
     //============== Bloques con onchange, estos bloques requieren lógica adicional en el menú contextual o generación de código, se registran manualmente con Blockly.Blocks
 
+    Blockly.Blocks['sql_select'] = selectBlockDefinition(Blockly);
+
     // DDL: PRIMARY KEY (bloque de constraint para columna primaria)
     Blockly.Blocks['sql_column_primary_key'] = columnPrimaryKeyBlockInit(Blockly);
 
@@ -207,7 +209,7 @@ export const AppController = {
     Blockly.Blocks['sql_column_check'] = columnCheckBlockInit(Blockly);
     Blockly.Blocks['sql_column_references'] = columnReferencesBlockInit(Blockly);
 
-
+    // BLOQUES CON ONCHANGE, esta función agrega contenido dinámico a los bloques
     // (coma dinámica) → registro manual con Blockly.Blocks
     // DML: EXPRESSION CON EXPRESSION_ONCHANGE (MENÚ CONTEXTUAL para DISTINCT/TOP), Actualizado para usar el patrón init en lugar de jsonInit, para poder agregar el input NEXT necesario para la coma dinámica, pero el generador y el onchange se mantienen igual
     Blockly.Blocks['sql_expression'] = {
@@ -340,13 +342,9 @@ export const AppController = {
       return JOIN_GENERATOR(block, javascriptGenerator);
     };
 
-    javascriptGenerator.forBlock['sql_where'] = function (block) {
-      return WHERE_GENERATOR(block, javascriptGenerator);
-    };
-
-    javascriptGenerator.forBlock['sql_aggregate_expression'] = function (block) {
-      return AGGREGATE_EXPRESSION_GENERATOR(block, javascriptGenerator);
-    };
+    // javascriptGenerator.forBlock['sql_aggregate_expression'] = function (block) {
+    //   return AGGREGATE_EXPRESSION_GENERATOR(block, javascriptGenerator);
+    // };
 
     javascriptGenerator.forBlock['sql_distinct'] = function (block) {
       return DISTINCT_GENERATOR(block, javascriptGenerator);
@@ -581,7 +579,7 @@ export const AppController = {
         }
 
         const sqlText = await apiService.exportSessionSQL(sessionId);
-        
+
         if (!sqlText || sqlText.trim().length === 0) {
           alert('Aún no has ejecutado ninguna consulta o el historial está vacío.');
           return;
@@ -607,13 +605,13 @@ export const AppController = {
       try {
         const state = Blockly.serialization.workspaces.save(this.workspace);
         const jsonText = JSON.stringify(state, null, 2);
-        
+
         const blob = new Blob([jsonText], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
-        
+
         const { sessionId } = apiService.getCurrentSession();
         const suffix = sessionId ? `_${sessionId}` : '';
-        
+
         const a = document.createElement('a');
         a.href = url;
         a.download = `workspace${suffix}.json`;
@@ -621,7 +619,7 @@ export const AppController = {
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-      } catch(err) {
+      } catch (err) {
         console.error('Error exportando JSON:', err);
         alert('Ocurrió un error: ' + err.message);
       }
