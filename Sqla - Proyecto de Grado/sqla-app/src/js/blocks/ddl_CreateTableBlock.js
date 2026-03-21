@@ -26,26 +26,31 @@ export const CREATE_TABLE_DEFINITION = {
 };
 
 // === GENERADOR (JS) ===
-export const CREATE_TABLE_GENERATOR = function(block, generator) {
+export const CREATE_TABLE_GENERATOR = function (block, generator) {
+  //========================================
   // const tableName = block.getFieldValue('TABLE_NAME');
 
   // const columnLines = [];
   // let current = block.getInputTargetBlock('COLUMNS');
 
   // while (current) {
-  //   // Guardamos el siguiente ANTES de procesar
   //   const next = current.getNextBlock();
 
-  //   // Desconectamos temporalmente el next para que blockToCode
-  //   // no incluya los bloques siguientes en el output
-  //   if (next) current.nextConnection.disconnect();
+  //   if (next) {
+  //     Blockly.Events.disable();
+  //     current.nextConnection.disconnect();
+  //     Blockly.Events.enable();
+  //   }
 
   //   const code = generator.blockToCode(current);
   //   const line = Array.isArray(code) ? code[0] : code;
   //   if (line && line.trim()) columnLines.push(line.trim());
 
-  //   // Reconectamos
-  //   if (next) current.nextConnection.connect(next.previousConnection);
+  //   if (next) {
+  //     Blockly.Events.disable();
+  //     current.nextConnection.connect(next.previousConnection);
+  //     Blockly.Events.enable();
+  //   }
 
   //   current = next;
   // }
@@ -56,18 +61,18 @@ export const CREATE_TABLE_GENERATOR = function(block, generator) {
 
   // return `CREATE TABLE ${tableName} (\n${formatted}\n);\n`;
 
+  //=============================
+
   const tableName = block.getFieldValue('TABLE_NAME');
 
   const columnLines = [];
   let current = block.getInputTargetBlock('COLUMNS');
 
   while (current) {
-    // Evaluar la función generadora directamente para evitar que Blockly
-    // auto-recorra los bloques conectados al 'nextConnection', evitando así
-    // tener que desconectarlos y reconectarlos del workspace.
-    const genFunc = generator.forBlock[current.type];
-    if (genFunc) {
-      const code = genFunc(current, generator);
+    // Llamar directamente al generador registrado para este tipo de bloque
+    const genFn = generator.forBlock[current.type];
+    if (genFn) {
+      const code = genFn.call(generator, current, generator);
       const line = Array.isArray(code) ? code[0] : code;
       if (line && line.trim()) columnLines.push(line.trim());
     }

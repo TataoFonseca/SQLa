@@ -10,26 +10,30 @@ export function expressionBlockDefinition(Blockly) {
   return {
     init: function () {
       this.appendValueInput('NEXT')
-          .setCheck(["Expression", "Column", "Aggregate", "DistinctExpression", "TopExpression"])
-          .appendField(new Blockly.FieldTextInput('column_name'), 'COLUMN');
+        .setCheck(["Expression", "Column", "Aggregate", "DistinctExpression", "TopExpression"])
+        .appendField(new Blockly.FieldTextInput('column_name'), 'COLUMN');
       this.setInputsInline(false);
       this.setOutput(true, ["Expression", "Column"]);
       this.setColour(160);
       this.setTooltip('Nombre de columna. Click derecho para agregar DISTINCT o TOP');
       this.setHelpUrl('');
-      Blockly.Extensions.apply('expression_context_menu', this, false);
+      Blockly.Extensions.apply('expression_context_menu', this, false); //Extension del menu contextual para agregar DISTINCT o TOP
+      Blockly.Extensions.apply('order_by_expression_extension', this, false); //Extension para poder insertarse dentro del bloque ORDER BY
     }
   };
 }
 
-export const EXPRESSION_GENERATOR = function(block, generator) {
+export const EXPRESSION_GENERATOR = function (block, generator) {
   const column = block.getFieldValue('COLUMN');
-  const next = generator.valueToCode(block, 'NEXT', generator.ORDER_ATOMIC);
-  const code = next ? column + ', ' + next : column;
+  const direction = block.getFieldValue('DIRECTION'); //Agregado, este "DIRECTION" lo aporta la extensión orderByExpressionExtension y solo se mostrará si el bloque está conectado a un con sql_order_by
+  const next = generator.valueToCode(block, 'NEXT', generator.ORDER_ATOMIC); // Este "NEXT" lo aporta la extensión expressionContextMenu y solo mostrará las opciones DISTINCT o TOP si el bloque está conectado o es adyacente a un bloque sql_select
+  // const code = next ? column + ', ' + next : column;
+  const self = direction ? `${column} ${direction}` : column; 
+  const code = next ? `${self}, ${next}` : self;
   return [code, generator.ORDER_ATOMIC];
 };
 
-export const EXPRESSION_ONCHANGE = function(event) {
+export const EXPRESSION_ONCHANGE = function (event) {
   if (event.type !== 'move' && event.type !== 'change') return;
 
   const nextInput = this.getInput('NEXT');

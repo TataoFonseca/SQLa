@@ -18,21 +18,21 @@ export const TOP_DEFINITION = {
       "align": "RIGHT"
     }
   ],
-  "inputsInline": true,
+  "inputsInline": false,
   "output": "TopExpression",
   "colour": 230,
   "tooltip": "Limita el número de filas retornadas",
   "helpUrl": ""
 };
 
-export const TOP_GENERATOR = function(block, generator) {
+export const TOP_GENERATOR = function (block, generator) {
   const number = block.getFieldValue('NUMBER');
   const expression = generator.valueToCode(block, 'EXPRESSION', generator.ORDER_ATOMIC) || '';
-  
+
   if (!expression) {
     return ['', generator.ORDER_NONE];
   }
-  
+
   const code = 'TOP (' + number + ') ' + expression;
   return [code, generator.ORDER_ATOMIC];
 };
