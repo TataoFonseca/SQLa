@@ -62,25 +62,16 @@ export const CREATE_TABLE_GENERATOR = function(block, generator) {
   let current = block.getInputTargetBlock('COLUMNS');
 
   while (current) {
-    const next = current.getNextBlock();
-
-    if (next) {
-      Blockly.Events.disable();
-      current.nextConnection.disconnect();
-      Blockly.Events.enable();
+    // Evaluar la función generadora directamente para evitar que Blockly
+    // auto-recorra los bloques conectados al 'nextConnection', evitando así
+    // tener que desconectarlos y reconectarlos del workspace.
+    const genFunc = generator.forBlock[current.type];
+    if (genFunc) {
+      const code = genFunc(current, generator);
+      const line = Array.isArray(code) ? code[0] : code;
+      if (line && line.trim()) columnLines.push(line.trim());
     }
-
-    const code = generator.blockToCode(current);
-    const line = Array.isArray(code) ? code[0] : code;
-    if (line && line.trim()) columnLines.push(line.trim());
-
-    if (next) {
-      Blockly.Events.disable();
-      current.nextConnection.connect(next.previousConnection);
-      Blockly.Events.enable();
-    }
-
-    current = next;
+    current = current.getNextBlock();
   }
 
   const formatted = columnLines

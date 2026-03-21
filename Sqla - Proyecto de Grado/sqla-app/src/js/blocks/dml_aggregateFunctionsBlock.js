@@ -153,8 +153,7 @@ export function createAggregateFunctionOnChange(Blockly) { //Cambió de AGGREGAT
           parentConn.connect(newBlock.outputConnection);
         } else {
           // Sin padre — posicionar donde estaba el bloque original
-          // newBlock.moveToXY(position.x, position.y);  // ← restaurar posición
-          newBlock.moveTo(position);
+          newBlock.moveBy(position.x, position.y);
         }
       } catch(e) {
         console.error('Error al reemplazar bloque de agregación:', e);

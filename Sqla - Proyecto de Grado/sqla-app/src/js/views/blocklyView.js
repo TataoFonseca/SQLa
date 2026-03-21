@@ -8,16 +8,26 @@ const BlocklyView = (() => {
   function initBlockly(containerId) {
     workspace = Blockly.inject(containerId, {
       toolbox: `
-        <xml>
-          <block type="controls_if"></block>
-          <block type="logic_compare"></block>
-          <block type="math_number"></block>
-          <block type="text"></block>
-          <block type="variables_set"></block>
-          <block type="variables_get"></block>
-        </xml>
-      `,
-      trashcan: true
+    <xml>
+      <block type="controls_if"></block>
+      <block type="logic_compare"></block>
+      <block type="math_number"></block>
+      <block type="text"></block>
+      <block type="variables_set"></block>
+      <block type="variables_get"></block>
+    </xml>
+  `,
+      trashcan: true,
+      scrollbars: true,
+
+      zoom: {
+        controls: true,   // 👈 ESTO activa los botones (+, -, reset)
+        wheel: true,
+        startScale: 1.0,
+        maxScale: 3,
+        minScale: 0.3,
+        scaleSpeed: 1.2
+      }
     });
 
     workspace.addChangeListener(() => {

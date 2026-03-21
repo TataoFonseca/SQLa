@@ -435,7 +435,16 @@ export const AppController = {
         scrollbars: true,
         drag: true,
         wheel: true
-      }
+      },
+      zoom: {
+        controls: true,
+        wheel: true,
+        startScale: 1.0,
+        maxScale: 3,
+        minScale: 0.3,
+        scaleSpeed: 1.2
+      },
+      trashcan: true
     });
 
     if (this.workspace.getFlyout()) {
@@ -487,6 +496,14 @@ export const AppController = {
 
     Blockly.svgResize(this.workspace);
     window.addEventListener('resize', () => Blockly.svgResize(this.workspace));
+
+    // Ocasionalmente flexbox cambia el tamaño del div sin disparar 'resize' en window.
+    // Un ResizeObserver asegura que las métricas de Blockly via svgResize siempre sean exactas.
+    // Si Blockly cree que el div es pequeño, auto-scrolleará la pantalla al enfocar un text field.
+    const resizeObserver = new ResizeObserver(() => {
+      this.resizeBlockly();
+    });
+    resizeObserver.observe(blocklyDiv);
 
     // === LISTENER: actualizar SQL Output al cambiar workspace ===
     this.workspace.addChangeListener(() => {
@@ -713,6 +730,15 @@ export const AppController = {
     // Actualizar diagrama Mermaid con el AST de la respuesta
     if (ast) {
       this.updateMermaidFromAST(ast);
+    }
+  },
+
+  // ============================================================
+  // MÉTODO: forzar recalculo de métricas de Blockly
+  // ============================================================
+  resizeBlockly: function () {
+    if (this.workspace) {
+      Blockly.svgResize(this.workspace);
     }
   },
 
