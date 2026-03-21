@@ -170,12 +170,21 @@
         <field name="COLUMN">columna</field>
       </block>
 
+      <!-- ORDER BY pre-cargado con un OrderByExpression -->
+      <block type="sql_order_by">
+        <value name="EXPRESSION">
+          <block type="sql_expression">
+            <field name="COLUMN">columna</field>
+          </block>
+        </value>
+      </block>
+
       <!-- Nota: Comparison/QuantifiedComparison/Membership se agregan 
           desde click derecho sobre el bloque dentro de HAVING -->
 
 
     </category>
-<!-- Eliminados bloques de matematicas -->
+    <!-- Eliminados bloques de matematicas -->
     <!-- <category name="Logic" colour="%{BKY_LOGIC_HUE}">
       <block type="controls_if"></block>
       <block type="logic_compare"></block>

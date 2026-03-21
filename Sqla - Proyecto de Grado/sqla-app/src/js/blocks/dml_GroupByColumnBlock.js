@@ -20,14 +20,14 @@ export const GROUPBY_COLUMN_DEFINITION = {
       "check": ["GroupByColumn"]
     }
   ],
-  "inputsInline": true,
+  "inputsInline": false,
   "output": ["GroupByColumn"],
   "colour": 200,
   "tooltip": "Columna para agrupar. Conecta otro bloque en NEXT para agregar más columnas.",
   "helpUrl": ""
 };
 
-export const GROUPBY_COLUMN_GENERATOR = function(block, generator) {
+export const GROUPBY_COLUMN_GENERATOR = function (block, generator) {
   const column = block.getFieldValue('COLUMN');
   const next = generator.valueToCode(block, 'NEXT', generator.ORDER_ATOMIC);
   const code = next ? column + ', ' + next : column;
@@ -35,7 +35,7 @@ export const GROUPBY_COLUMN_GENERATOR = function(block, generator) {
 };
 
 // Coma dinámica: idéntica a EXPRESSION_ONCHANGE en dml_ExpressionBlock.js
-export const GROUPBY_COLUMN_ONCHANGE = function(event) {
+export const GROUPBY_COLUMN_ONCHANGE = function (event) {
   if (event.type !== 'move' && event.type !== 'change') return;
 
   const nextInput = this.getInput('NEXT');

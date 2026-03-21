@@ -18,7 +18,7 @@ export const TOP_DEFINITION = {
       "align": "RIGHT"
     }
   ],
-  "inputsInline": true,
+  "inputsInline": false,
   "output": "TopExpression",
   "colour": 230,
   "tooltip": "Limita el número de filas retornadas",

@@ -87,6 +87,11 @@ import { COMPARISON_DEFINITION, COMPARISON_GENERATOR } from '../blocks/dml_Compa
 import { QUANTIFIED_COMPARISON_DEFINITION, QUANTIFIED_COMPARISON_GENERATOR } from '../blocks/dml_QuantifiedComparisonBlock.js';
 import { MEMBERSHIP_DEFINITION, MEMBERSHIP_GENERATOR } from '../blocks/dml_MembershipBlock.js';
 
+//DML: ORDER BY
+import { ORDER_BY_DEFINITION, ORDER_BY_GENERATOR } from '../blocks/dml_OrderByBlock.js'; //Bloque ORDER BY
+// import { orderByExpressionBlockDefinition, ORDERBY_EXPRESSION_GENERATOR } from '../blocks/dml_OrderByExpressionBlock.js'; //Bloque ORDER BY Expression
+import { registerOrderByExpressionExtension } from '../blocks/extensions/orderByExpressionExtenssion.js'; //Extensión para ORDER BY Expression
+
 
 mermaid.initialize({
   startOnLoad: false,
@@ -149,6 +154,9 @@ export const AppController = {
 
     //REGISTRO DEL MENÚ CONTEXTUAL DE EXTENSIÓN PARA EXPRESIONES EN HAVING
     registerHavingExpressionContextMenu();
+
+    //REGISTRO DE EXTENSIÓN DE MENÚ CONTEXTUAL PARA ORDER BY EXPRESSION
+    registerOrderByExpressionExtension();
 
 
     // PASO 2: REGISTRO DE BLOQUES (JSON) ===
@@ -278,6 +286,12 @@ export const AppController = {
       onchange: GROUPBY_COLUMN_ONCHANGE
     };
 
+    //DML: ORDER BY
+    Blockly.Blocks['sql_order_by'] = {
+      init: function () { this.jsonInit(ORDER_BY_DEFINITION); }
+
+    };
+
     // REGISTRO DE GENERADORES DDL
     javascriptGenerator.forBlock['sql_create_table'] = function (block) {
       return CREATE_TABLE_GENERATOR(block, javascriptGenerator);
@@ -398,6 +412,11 @@ export const AppController = {
     javascriptGenerator.forBlock['sql_membership'] = function (block) {
       return MEMBERSHIP_GENERATOR(block, javascriptGenerator);
     };
+
+    //DML: ORDER BY
+    javascriptGenerator.forBlock['sql_order_by'] = function (block) {
+      return ORDER_BY_GENERATOR(block, javascriptGenerator);
+    }; //El generador lo maneja el expressionBlockDefinition
 
     // === TEMA PERSONALIZADO PARA BLOCKLY ===
     const darkGlassTheme = Blockly.Theme.defineTheme('darkGlass', {
