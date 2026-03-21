@@ -2,7 +2,7 @@ import { parseSQL } from "../services/sqlParser.service.js";
 import { validateQuery } from "../services/queryValidator.js";
 import { executeSQL } from "../services/sqlExecutor.service.js";
 import { validateSession, updateLastUsed } from "../services/session.service.js";
-import { saveQuery, getQueriesBySession } from "../services/project.service.js";
+import { saveQuery, getQueriesBySession, getQueriesForExport } from "../services/project.service.js";
 
 export async function analyzeSQL(req, res) {
     try {
@@ -85,5 +85,43 @@ export async function listQueries(req, res) {
     } catch (err) {
         console.error("ERROR en listQueries:", err);
         res.status(500).json({ ok: false, error: err.message, data: [] });
+    }
+}
+
+export async function exportSQL(req, res) {
+    try {
+        const { sessionId } = req.params;
+
+        if (!sessionId) {
+            return res.status(400).json({ ok: false, error: "sessionId requerido" });
+        }
+
+        const queries = await getQueriesForExport(sessionId);
+
+        // Si no hay consultas, retornar archivo vacío
+        if (!queries || queries.length === 0) {
+            return res.status(200).send("");
+        }
+
+        // Construir el archivo .sql uniendo las sentencias.
+        // Aquí se usa el sql original o el transformado según preferencia. Usamos sql original que es lo que el usuario construyó.
+        // El frontend bloquea "SELECT", pero si es solo estructura (CREATE/INSERT), usamos sql_text que es lo que ve el usuario. Usaremos sql_text porque es más claro para el usuario.
+        const sqlLines = queries.map(q => {
+            let stmt = q.sql.trim();
+            if (!stmt.endsWith(';')) stmt += ';';
+            return stmt;
+        });
+
+        const fileContent = sqlLines.join('\n\n');
+
+        // Configurar headers para descarga
+        res.setHeader('Content-Type', 'application/sql');
+        res.setHeader('Content-Disposition', `attachment; filename=session_${sessionId}.sql`);
+
+        return res.send(fileContent);
+
+    } catch (err) {
+        console.error("ERROR en exportSQL:", err);
+        res.status(500).json({ ok: false, error: err.message });
     }
 }

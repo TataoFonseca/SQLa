@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { analyzeSQL, listQueries } from "../controllers/sql.controller.js";
+import { analyzeSQL, listQueries, exportSQL } from "../controllers/sql.controller.js";
 import { createSession, validateSession } from "../services/session.service.js";
 
 const router = Router();
@@ -36,5 +36,8 @@ router.post("/analyze", analyzeSQL);
 
 //  Obtener historial de consultas
 router.get("/history/:sessionId", listQueries);
+
+// Exportar SQL de la sesión
+router.get("/export-sql/:sessionId", exportSQL);
 
 export default router;

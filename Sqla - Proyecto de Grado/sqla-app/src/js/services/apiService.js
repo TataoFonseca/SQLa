@@ -148,7 +148,35 @@ class ApiService {
     }
 
     // ==========================================
-    // 5. UTILIDADES
+    // 5. EXPORTAR SQL DE SESIÓN
+    // ==========================================
+    async exportSessionSQL(sessionId) {
+        if (!sessionId) {
+            throw new Error('No hay sessionId para exportar.');
+        }
+
+        try {
+            console.log('📤 Solicitando exportación de SQL al backend para sesión:', sessionId);
+            const response = await fetch(`${API_BASE_URL}/export-sql/${sessionId}`, {
+                method: 'GET',
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || 'Error al descargar SQL desde el backend');
+            }
+
+            // Obtener como texto
+            const sqlText = await response.text();
+            return sqlText;
+        } catch (error) {
+            console.error('❌ Error en exportSessionSQL:', error);
+            throw error;
+        }
+    }
+
+    // ==========================================
+    // 6. UTILIDADES
     // ==========================================
     getCurrentSession() {
         return {
