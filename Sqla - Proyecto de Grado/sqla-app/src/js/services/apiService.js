@@ -1,6 +1,8 @@
 // sqla-app/src/js/services/apiService.js
 
-const API_BASE_URL = 'http://localhost:3000/api/sql'; // Ajusta el puerto si es diferente
+// const API_BASE_URL = 'http://localhost:3000/api/sql'; // Ajustar el puerto si es diferente, con esta opción el JS se ejecutá en la maquina donde se abre el navegador, por lo que aunque las sesiones se creaban, el backend de docker no erá alcanzado, por lo que no se podian encontrar las otras sesiones porque la maquina buscaba en su backend local por no poder llegar al del servidor.
+
+const API_BASE_URL = `http://${window.location.hostname}:3000/api/sql`; // Dinámico para aceptar conexiones de red local
 
 class ApiService {
     constructor() {
@@ -14,7 +16,7 @@ class ApiService {
     async createSession() {
         try {
             console.log('📤 Creando nueva sesión...');
-            
+
             const response = await fetch(`${API_BASE_URL}/session`, {
                 method: 'POST',
                 headers: {
@@ -29,7 +31,7 @@ class ApiService {
             if (data.ok) {
                 this.currentSessionId = data.sessionId;
                 this.currentSchema = data.schemaName;
-                
+
                 // Guardar en localStorage para persistencia
                 localStorage.setItem('sqlSessionId', data.sessionId);
                 localStorage.setItem('sqlSchema', data.schemaName);
@@ -48,7 +50,7 @@ class ApiService {
     async loadSession(sessionId) {
         try {
             console.log('📤 Cargando sesión:', sessionId);
-            
+
             const response = await fetch(`${API_BASE_URL}/session/${sessionId}`, {
                 method: 'GET',
                 headers: {
@@ -62,7 +64,7 @@ class ApiService {
             if (data.ok) {
                 this.currentSessionId = data.id;
                 this.currentSchema = data.schema_name;
-                
+
                 localStorage.setItem('sqlSessionId', data.id);
                 localStorage.setItem('sqlSchema', data.schema_name);
             }
@@ -112,7 +114,7 @@ class ApiService {
             });
 
             const data = await response.json();
-            
+
             // ⭐ ESTRUCTURA JSON QUE RECIBES DEL BACKEND
             console.log('📥 Respuesta del backend:');
             console.log('   Status:', response.status);

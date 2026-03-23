@@ -6,6 +6,7 @@ COPY sqla-app/package*.json ./
 RUN npm install
 COPY sqla-app/ .
 RUN npm run build
+RUN mkdir -p /app/dist/src/js/views/partials && cp -R src/js/views/partials/* /app/dist/src/js/views/partials/
 
 # Etapa 2: Servidor Nginx
 FROM nginx:alpine

@@ -9,7 +9,7 @@ if %errorlevel% neq 0 (
 )
 
 echo Copiando el respaldo a esta carpeta...
-docker cp sqla-db:/var/opt/mssql/data/sqla_sandbox_backup.bak .\sqla_sandbox_backup.bak
+docker cp sqla-db:/var/opt/mssql/data/sqla_sandbox_backup.bak "%~dp0sqla_sandbox_backup.bak"
 if %errorlevel% neq 0 (
     echo [ERROR] No se pudo extraer el archivo del contenedor.
     pause
