@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  sql-server:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: sqla-db
+    user: root
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "PasswordSuperSeguro123!"
+    ports:
+      - "1433:1433"
+    volumes:
+      - sql-data:/var/opt/mssql/data
+      - ./db-scripts:/scripts
+    entrypoint: /bin/bash /scripts/entrypoint.sh
+
+  backend:
+    build:
+      context: ..
+      dockerfile: Docker/backend.Dockerfile
+    container_name: sqla-backend
+    ports:
+      - "3000:3000"
+    environment:
+      DB_USER: "sa"
+      DB_PASSWORD: "PasswordSeguro123!"
+      DB_SERVER: "sql-server"
+      DB_DATABASE: "sqla_sandbox"
+      DB_PORT: "1433"
+    depends_on:
+      - sql-server
+
+  frontend:
+    build:
+      context: ..
+      dockerfile: Docker/frontend.Dockerfile
+    container_name: sqla-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
+volumes:
+  sql-data:

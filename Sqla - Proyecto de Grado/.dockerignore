@@ -1,0 +1,13 @@
+# Global excludes
+.git
+.gemini
+*.zip
+
+# Frontend
+sqla-app/node_modules
+sqla-app/npm-debug.log
+sqla-app/dist
+
+# Backend
+sqla-backend/node_modules
+sqla-backend/npm-debug.log

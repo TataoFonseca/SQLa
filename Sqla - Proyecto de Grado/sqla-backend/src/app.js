@@ -11,7 +11,8 @@ app.use((req, res, next) => {
     console.log(`   Origin: ${req.headers.origin || 'no origin'}`);
 
     // Configurar headers CORS para TODAS las respuestas
-    res.header('Access-Control-Allow-Origin', 'http://localhost:5173');
+    const origin = req.headers.origin || '*';
+    res.header('Access-Control-Allow-Origin', origin);
     res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, DELETE');
     res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
     res.header('Access-Control-Allow-Credentials', 'true');
