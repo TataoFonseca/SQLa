@@ -20,7 +20,7 @@ const config = {
     },
     options: {
         port: Number(process.env.DB_PORT) || 1433,  // puerto estático (fijado en SQL Server Config Manager)
-        encrypt: false,
+        encrypt: true,
         trustServerCertificate: true
     }
 };

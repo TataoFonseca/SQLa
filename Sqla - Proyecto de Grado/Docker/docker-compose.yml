@@ -24,7 +24,7 @@ services:
       - "3000:3000"
     environment:
       DB_USER: "sa"
-      DB_PASSWORD: "PasswordSeguro123!"
+      DB_PASSWORD: "PasswordSuperSeguro123!"
       DB_SERVER: "sql-server"
       DB_DATABASE: "sqla_sandbox"
       DB_PORT: "1433"
