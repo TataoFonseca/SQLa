@@ -1389,14 +1389,20 @@ export const AppController = {
   // Pide el diagrama Mermaid de la BD global al backend.
   // Solo hace fetch una vez; las llamadas siguientes usan la caché.
   // ───────────────────────────────────────────────────────────────────────
+
+  _cachedGlobalData: null,
   loadGlobalDiagram: async function () {
-    if (this._cachedGlobalDiagram) return this._cachedGlobalDiagram;
+
+    if (this._cachedGlobalDiagram && this._cachedGlobalData) {
+      return { diagram: this._cachedGlobalDiagram, data: this._cachedGlobalData };
+    }
     try {
       const res = await fetch('http://localhost:3000/api/sql/global-diagram');
-      const data = await res.json();
-      if (data.ok && data.diagram) {
-        this._cachedGlobalDiagram = data.diagram;
-        return data.diagram;
+      const json = await res.json();
+      if (json.ok && json.diagram) {
+        this._cachedGlobalDiagram = json.diagram;
+        this._cachedGlobalData = json.data;
+        return { diagram: json.diagram, data: json.data };
       }
     } catch (err) {
       console.error('[AppController] Error cargando diagrama global:', err);
@@ -1468,36 +1474,18 @@ export const AppController = {
 
     if (isDDL) {
       // Pestaña DDL: tarjetas del workspace (lógica ya existente)
-      const tables = this.extractTablesFromWorkspace();
-      if (tables.length === 0) {
-        contentHTML = `
-          <p style="
-            color: rgba(255,255,255,0.3);
-            font-size: 0.85rem;
-            text-align: center;
-            padding: 24px 0;
-            font-style: italic;
-          ">Agrega un bloque CREATE TABLE para ver el diagrama.</p>
+      const result = await this.loadGlobalDiagram();
+      const contentEl = document.getElementById('erdPanelContent');
+      if (!contentEl) return;
+      if (!result) {
+        contentEl.innerHTML = `
+          <p style="color: rgba(255,100,100,0.7); font-size: 0.85rem; padding: 8px 0;">
+            No se pudo cargar el diagrama. Verifica que el backend está activo.
+          </p>
         `;
-      } else {
-        contentHTML = `
-          <div style="
-            display: flex;
-            flex-wrap: wrap;
-            gap: 20px;
-            align-items: flex-start;
-          ">
-            ${tables.map(t => this.renderTableCard(t)).join('')}
-          </div>
-        `;
+        return;
       }
-    } else {
-      // Pestaña DML: diagrama Mermaid de la BD precargada
-      contentHTML = `
-        <p style="color: rgba(255,255,255,0.35); font-size: 0.82rem; padding: 8px 0 4px;">
-          ⏳ Cargando diagrama de Chinook...
-        </p>
-      `;
+      this.renderChinookCards(result.data, contentEl);
     }
 
     // ── Inyectar estructura en el DOM ─────────────────────────────────────
@@ -1562,6 +1550,241 @@ ${globalDiagram}</pre>
     }
   },
 
+  renderChinookCards: function (data, container) {
+    if (!data || !data.tables) return;
 
+    const { tables, relations } = data;
+    const tableNames = Object.keys(tables);
 
+    // ── Layout: posiciones en grid para las tarjetas ────────────────────────
+    // Calculamos columnas según cantidad de tablas
+    const COLS = Math.min(4, tableNames.length);
+    const CARD_W = 240;
+    const CARD_GAP = 48;
+    const HEADER_H = 34;
+    const ROW_H = 26;
+    const PADDING = 32;   // margen perimetral del canvas
+
+    // Calcular altura de cada tarjeta según sus columnas
+    const cardHeights = {};
+    tableNames.forEach(name => {
+      cardHeights[name] = HEADER_H + Math.max(1, tables[name].length) * ROW_H + 12;
+    });
+
+    // Asignar posición (col, row) a cada tabla
+    const positions = {};
+    tableNames.forEach((name, i) => {
+      const col = i % COLS;
+      const row = Math.floor(i / COLS);
+      positions[name] = { col, row };
+    });
+
+    // Calcular offsets Y por fila (cada fila tiene la altura de la tarjeta más alta de esa fila)
+    const rowCount = Math.ceil(tableNames.length / COLS);
+    const rowHeights = Array.from({ length: rowCount }, (_, r) => {
+      const tablesInRow = tableNames.filter((_, i) => Math.floor(i / COLS) === r);
+      return Math.max(...tablesInRow.map(n => cardHeights[n]));
+    });
+
+    const rowOffsets = [PADDING];
+    for (let r = 1; r < rowCount; r++) {
+      rowOffsets[r] = rowOffsets[r - 1] + rowHeights[r - 1] + CARD_GAP;
+    }
+
+    // Coordenadas absolutas de cada tarjeta
+    const cardPos = {};
+    tableNames.forEach(name => {
+      const { col, row } = positions[name];
+      cardPos[name] = {
+        x: PADDING + col * (CARD_W + CARD_GAP),
+        y: rowOffsets[row],
+        w: CARD_W,
+        h: cardHeights[name],
+      };
+    });
+
+    const totalW = PADDING * 2 + COLS * CARD_W + (COLS - 1) * CARD_GAP;
+    const totalH = rowOffsets[rowCount - 1] + rowHeights[rowCount - 1] + PADDING;
+
+    // ── Colores (glass, coherente con el resto de la UI) ────────────────────
+    const C = {
+      headerBg: 'rgba(80, 60, 180, 0.82)',
+      cardBg: 'rgba(22, 20, 46, 0.96)',
+      cardBorder: 'rgba(110, 90, 230, 0.45)',
+      divider: 'rgba(255,255,255,0.07)',
+      colName: 'rgba(255,255,255,0.82)',
+      colType: 'rgba(255,255,255,0.35)',
+      pkColor: '#f5c542',
+      fkColor: '#4fc3f7',
+      headerText: '#ffffff',
+      fkLine: 'rgba(79, 195, 247, 0.55)',   // línea FK — azul suave
+      fkLineSelf: 'rgba(255, 180, 50, 0.5)',    // auto-relación (Employee→Employee)
+    };
+
+    // ── Calcular puntos de conexión para las líneas FK ──────────────────────
+    // Cada línea conecta el centro-derecho de la col FK con el centro-izquierdo de la PK destino
+    const lines = relations.map(rel => {
+      const from = cardPos[rel.from];
+      const to = cardPos[rel.to];
+      if (!from || !to) return null;
+
+      // Índice de la columna FK en la tabla origen
+      const fromCols = tables[rel.from] || [];
+      const fromColIdx = fromCols.findIndex(c => c.name === rel.fromCol);
+      const fromRowY = from.y + HEADER_H + (fromColIdx >= 0 ? fromColIdx * ROW_H + ROW_H / 2 : ROW_H / 2);
+
+      // Índice de la columna PK en la tabla destino
+      const toCols = tables[rel.to] || [];
+      const toColIdx = toCols.findIndex(c => c.pk);
+      const toRowY = to.y + HEADER_H + (toColIdx >= 0 ? toColIdx * ROW_H + ROW_H / 2 : ROW_H / 2);
+
+      // Decidir si la línea sale por la derecha o izquierda según posición relativa
+      const fromRight = from.x + from.w < to.x + 20;   // from está a la izquierda
+      const fromLeft = from.x > to.x + to.w - 20;     // from está a la derecha
+
+      let x1, x2, cx1, cx2;
+
+      if (rel.from === rel.to) {
+        // Auto-relación — curva hacia afuera por la derecha
+        x1 = from.x + from.w; x2 = to.x + to.w;
+        return { x1, y1: fromRowY, x2, y2: toRowY, self: true, label: rel.fromCol, color: C.fkLineSelf };
+      }
+
+      if (fromRight) {
+        x1 = from.x + from.w; x2 = to.x;
+      } else if (fromLeft) {
+        x1 = from.x; x2 = to.x + to.w;
+      } else {
+        // Misma columna del grid — conectar por la derecha de ambas
+        x1 = from.x + from.w; x2 = to.x + to.w;
+      }
+
+      cx1 = x1 + (x2 - x1) * 0.45;
+      cx2 = x2 - (x2 - x1) * 0.45;
+
+      return { x1, y1: fromRowY, x2, y2: toRowY, cx1, cx2, self: false, label: rel.fromCol, color: C.fkLine };
+    }).filter(Boolean);
+
+    // ── Construir SVG ───────────────────────────────────────────────────────
+    // Marcador de flecha FK
+    const defs = `
+      <defs>
+        <marker id="fk-arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="${C.fkColor}" opacity="0.7"/>
+        </marker>
+        <marker id="fk-arrow-self" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="${C.fkLineSelf}" opacity="0.7"/>
+        </marker>
+      </defs>
+    `;
+
+    // Líneas FK (se dibujan primero, detrás de las tarjetas)
+    const linesSVG = lines.map(l => {
+      const markerId = l.self ? 'fk-arrow-self' : 'fk-arrow';
+      if (l.self) {
+        const rx = 36, ry = 28;
+        return `<path d="M${l.x1},${l.y1} C${l.x1 + rx},${l.y1 - ry} ${l.x2 + rx},${l.y2 - ry} ${l.x2},${l.y2}"
+          fill="none" stroke="${l.color}" stroke-width="1.5" stroke-dasharray="5,3"
+          marker-end="url(#${markerId})"/>`;
+      }
+      return `<path d="M${l.x1},${l.y1} C${l.cx1},${l.y1} ${l.cx2},${l.y2} ${l.x2},${l.y2}"
+        fill="none" stroke="${l.color}" stroke-width="1.5" stroke-dasharray="5,3"
+        marker-end="url(#${markerId})"/>`;
+    }).join('\n');
+
+    // Tarjetas
+    const cardsSVG = tableNames.map(name => {
+      const { x, y, w, h } = cardPos[name];
+      const cols = tables[name];
+      const rx = 7;
+
+      // Header
+      let card = `
+        <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${rx}" ry="${rx}"
+          fill="${C.cardBg}" stroke="${C.cardBorder}" stroke-width="1"/>
+        <rect x="${x}" y="${y}" width="${w}" height="${HEADER_H}" rx="${rx}" ry="${rx}"
+          fill="${C.headerBg}"/>
+        <rect x="${x}" y="${y + HEADER_H - rx}" width="${w}" height="${rx}"
+          fill="${C.headerBg}"/>
+        <text x="${x + 12}" y="${y + HEADER_H / 2 + 5}"
+          fill="${C.headerText}" font-size="13" font-weight="600"
+          font-family="'Fira Code', monospace">${name}</text>
+      `;
+
+      // Columnas
+      cols.forEach((col, i) => {
+        const cy = y + HEADER_H + i * ROW_H;
+        const textColor = col.pk ? C.pkColor : col.fk ? C.fkColor : C.colName;
+
+        // Separador
+        if (i > 0) {
+          card += `<line x1="${x + 1}" y1="${cy}" x2="${x + w - 1}" y2="${cy}"
+            stroke="${C.divider}" stroke-width="1"/>`;
+        }
+
+        // Icono
+        const icon = col.pk ? '🔑' : col.fk ? '🔗' : '○';
+        card += `<text x="${x + 10}" y="${cy + ROW_H / 2 + 5}"
+          fill="${textColor}" font-size="11">${icon}</text>`;
+
+        // Nombre columna
+        card += `<text x="${x + 26}" y="${cy + ROW_H / 2 + 5}"
+          fill="${textColor}" font-size="11"
+          font-family="'Fira Code', monospace">${col.name}</text>`;
+
+        // Tipo (alineado a la derecha)
+        card += `<text x="${x + w - 8}" y="${cy + ROW_H / 2 + 5}"
+          fill="${C.colType}" font-size="10"
+          font-family="'Fira Code', monospace"
+          text-anchor="end">${col.type}</text>`;
+
+        // Badge PK / FK
+        if (col.pk || col.fk) {
+          const badge = col.pk ? 'PK' : 'FK';
+          const bgCol = col.pk ? 'rgba(245,197,66,0.18)' : 'rgba(79,195,247,0.15)';
+          const txCol = col.pk ? C.pkColor : C.fkColor;
+          const bx = x + w - 36;
+          const by = cy + 5;
+          card += `
+            <rect x="${bx}" y="${by}" width="22" height="14" rx="3"
+              fill="${bgCol}" stroke="${txCol}" stroke-width="0.5" opacity="0.8"/>
+            <text x="${bx + 11}" y="${by + 10.5}"
+              fill="${txCol}" font-size="9" font-weight="600"
+              text-anchor="middle">${badge}</text>
+          `;
+        }
+      });
+
+      if (cols.length === 0) {
+        card += `<text x="${x + w / 2}" y="${y + HEADER_H + 20}"
+          fill="rgba(255,255,255,0.25)" font-size="11" text-anchor="middle"
+          font-style="italic">sin columnas</text>`;
+      }
+
+      return card;
+    }).join('\n');
+
+    // ── Inyectar en el contenedor ───────────────────────────────────────────
+    container.innerHTML = `
+      <div style="
+        font-size: 11px;
+        color: rgba(255,255,255,0.3);
+        text-transform: uppercase;
+        letter-spacing: 0.07em;
+        margin-bottom: 12px;
+      ">Base de datos — Chinook</div>
+      <div style="overflow-x: auto; overflow-y: auto;">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="${totalW}"
+          height="${totalH}"
+          style="display: block;"
+        >
+          ${defs}
+          ${linesSVG}
+          ${cardsSVG}
+        </svg>
+      </div>
+    `;
+  },
 };

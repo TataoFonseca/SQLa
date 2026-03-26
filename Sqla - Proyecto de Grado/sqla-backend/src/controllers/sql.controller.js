@@ -129,13 +129,13 @@ export async function exportSQL(req, res) {
 // NUEVO: Función que obtiene el diagrama ERD global
 export async function sendGlobalDiagram(req, res) {
     try {
-        const diagram = getOrGenerateGlobalDiagram();
-        return res.json({ ok: true, diagram });
+        const { diagram, data } = getOrGenerateGlobalDiagram();
+        return res.json({ ok: true, diagram, data });
     } catch (err) {
         console.error("[sendGlobalDiagram] Error generando diagrama:", err);
         return res.status(500).json({
             ok: false,
-            error: "No se pudo generar el diagrama ERD. Verifica que el script SQL existe en la ruta configurada.",
+            error: "No se pudo generar el diagrama ERD.",
             detail: err.message
         });
     }

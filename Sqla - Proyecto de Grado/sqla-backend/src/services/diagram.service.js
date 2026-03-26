@@ -10,7 +10,6 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 // Ruta al script SQL de la BD precargada
-// Ajusta este path si la estructura de carpetas cambia
 const SQL_SCRIPT_PATH = resolve(
   __dirname,
   "../../../Docker/db-scripts/02_Chinook_SqlServer.sql"
@@ -18,34 +17,34 @@ const SQL_SCRIPT_PATH = resolve(
 console.log('[diagram.service] Path resuelto:', SQL_SCRIPT_PATH);
 // ── Caché en RAM ──────────────────────────────────────────────────────────────
 let cachedGlobalDiagram = null;
+let cachedGlobalData = null;
 
-// ── Helpers de parseo ─────────────────────────────────────────────────────────
-
-/**
- * Mapea tipos SQL Server a tipos Mermaid legibles.
- * @param {string} rawType  Ej: "NVARCHAR(160)", "INT", "NUMERIC(10,2)"
- * @returns {string}
- */
 function mapSqlType(rawType) {
   if (!rawType) return "string";
   const t = rawType.toUpperCase().split("(")[0].trim();
-  const intTypes = ["INT", "INTEGER", "BIGINT", "SMALLINT", "TINYINT"];
-  const floatTypes = ["NUMERIC", "DECIMAL", "FLOAT", "REAL", "MONEY"];
-  const dateTypes = ["DATE"];
-  const datetimeTypes = ["DATETIME", "DATETIME2", "TIMESTAMP"];
-  const boolTypes = ["BIT", "BOOLEAN"];
-
-  if (intTypes.includes(t)) return "int";
-  if (floatTypes.includes(t)) return "float";
-  if (dateTypes.includes(t)) return "date";
-  if (datetimeTypes.includes(t)) return "datetime";
-  if (boolTypes.includes(t)) return "boolean";
-  // NVARCHAR, VARCHAR, CHAR, NCHAR, TEXT → string
+  if (["INT", "INTEGER", "BIGINT", "SMALLINT", "TINYINT"].includes(t)) return "int";
+  if (["NUMERIC", "DECIMAL", "FLOAT", "REAL", "MONEY"].includes(t)) return "float";
+  if (["DATE"].includes(t)) return "date";
+  if (["DATETIME", "DATETIME2", "TIMESTAMP"].includes(t)) return "datetime";
+  if (["BIT", "BOOLEAN"].includes(t)) return "boolean";
   return "string";
 }
 
+function splitByComma(str) {
+  const parts = [];
+  let depth = 0, current = "";
+  for (const char of str) {
+    if (char === "(") depth++;
+    else if (char === ")") depth--;
+    if (char === "," && depth === 0) { parts.push(current); current = ""; }
+    else current += char;
+  }
+  if (current.trim()) parts.push(current);
+  return parts;
+}
+
 /**
- * Parsea el script SQL y retorna:
+ * Parsea el script SQL de la BD y retorna:
  *  - tables:    { TableName: [ { name, type, pk } ] }
  *  - relations: [ { from, to, fromCol, toCol } ]
  *
@@ -89,10 +88,10 @@ function parseSqlScript(sqlContent) {
       const bodyEnd = stmt.lastIndexOf(")");
       if (bodyStart === -1 || bodyEnd === -1) continue;
 
-      const body = stmt.slice(bodyStart + 1, bodyEnd);
+      // const body = stmt.slice(bodyStart + 1, bodyEnd);
 
       // Dividir por coma respetando paréntesis anidados (para tipos como NUMERIC(10,2))
-      const lines = splitByComma(body);
+      // const lines = splitByComma(body);
 
       for (const line of lines) {
         const trimmed = line.trim();
@@ -121,6 +120,7 @@ function parseSqlScript(sqlContent) {
             name: colMatch[1],
             type: mapSqlType(colMatch[2]),
             pk: false,
+            fk: null,
           });
         }
       }
@@ -145,41 +145,24 @@ function parseSqlScript(sqlContent) {
       );
 
       if (fromMatch && fromColMatch && refMatch) {
+        const fromTable = fromMatch[1], fromCol = fromColMatch[1];
+        const toTable = refMatch[1], toCol = refMatch[2];
         relations.push({
           from: fromMatch[1],
           to: refMatch[1],
           fromCol: fromColMatch[1],
           toCol: refMatch[2],
         });
+
+        if (tables[fromTable]) {
+          const col = tables[fromTable].find(c => c.name === fromCol);
+          if (col) col.fk = { table: toTable, column: toCol };
+        }
       }
     }
   }
 
   return { tables, relations };
-}
-
-/**
- * Divide un string por comas respetando paréntesis anidados.
- * Necesario para no partir NUMERIC(10,2) en dos.
- */
-function splitByComma(str) {
-  const parts = [];
-  let depth = 0;
-  let current = "";
-
-  for (const char of str) {
-    if (char === "(") depth++;
-    else if (char === ")") depth--;
-
-    if (char === "," && depth === 0) {
-      parts.push(current);
-      current = "";
-    } else {
-      current += char;
-    }
-  }
-  if (current.trim()) parts.push(current);
-  return parts;
 }
 
 /**
@@ -232,9 +215,12 @@ function buildMermaidString({ tables, relations }) {
  * @returns {string} Diagrama Mermaid listo para renderizar
  */
 export function getOrGenerateGlobalDiagram() {
-  if (cachedGlobalDiagram) {
+  if (cachedGlobalDiagram && cachedGlobalData) {
     console.log("[diagram.service] Retornando diagrama desde caché.");
-    return cachedGlobalDiagram;
+    return {
+      diagram: cachedGlobalDiagram,
+      data: cachedGlobalData
+    };
   }
 
   console.log("[diagram.service] Generando diagrama por primera vez...");
@@ -244,6 +230,7 @@ export function getOrGenerateGlobalDiagram() {
 
   console.log('[diagram.service] Tablas encontradas:', Object.keys(parsed.tables));
 
+  cachedGlobalData = parsed;
   cachedGlobalDiagram = buildMermaidString(parsed);
 
   console.log(
@@ -251,7 +238,10 @@ export function getOrGenerateGlobalDiagram() {
     `${parsed.relations.length} relaciones.`
   );
 
-  return cachedGlobalDiagram;
+  return {
+    diagram: cachedGlobalDiagram,
+    data: cachedGlobalData
+  };
 }
 
 /**
@@ -259,5 +249,6 @@ export function getOrGenerateGlobalDiagram() {
  */
 export function invalidateDiagramCache() {
   cachedGlobalDiagram = null;
+  cachedGlobalData = null;
   console.log("[diagram.service] Caché de diagrama invalidada.");
 }
