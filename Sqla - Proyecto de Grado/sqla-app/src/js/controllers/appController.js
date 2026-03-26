@@ -533,6 +533,24 @@ export const AppController = {
 
         // Renderizar el contenido de la pestaña correspondiente
         await AppController.openErdPanel(tab);
+
+        setTimeout(() => {
+          const flyout = AppController.workspace?.getFlyout?.();
+          if (!flyout) return;
+          const flyoutWs = flyout.getWorkspace?.();
+          if (!flyoutWs) return;
+          const flyoutBlocks = flyoutWs.getAllBlocks(false);
+          for (const block of flyoutBlocks) {
+            const svgRoot = block.getSvgRoot?.();
+            if (!svgRoot) continue;
+            if (CTX_MENU_TYPES.has(block.type)) {
+              svgRoot.classList.add('blockly-ctx-menu');
+            } else {
+              svgRoot.classList.remove('blockly-ctx-menu');
+            }
+          }
+        }, 80);
+
       });
     }, 300);
 
@@ -717,6 +735,67 @@ export const AppController = {
     });
 
     console.log('Blockly inicializado con bloques SQL', this.workspace);
+
+    // ── Bloques con menú contextual — borde dorado permanente ──────────────
+    // Tipos que tienen menú contextual (clic derecho con opciones)
+    const CTX_MENU_TYPES = new Set([
+      'sql_select',
+      'sql_from_simple',
+      'sql_from',
+      'sql_where',
+      'sql_sum',
+      'sql_avg',
+      'sql_count',
+      'sql_min',
+      'sql_max',
+      'sql_expression_single',   // expresión dentro de HAVING
+    ]);
+
+    // Inyectar CSS una sola vez en el documento
+    if (!document.getElementById('blockly-ctx-style')) {
+      const style = document.createElement('style');
+      style.id = 'blockly-ctx-style';
+      style.textContent = `
+        .blockly-ctx-menu > .blocklyPath {
+          stroke: #f5c518 !important;
+          stroke-width: 5px !important;
+        }
+      `;
+      document.head.appendChild(style);
+    }
+
+    // Función que marca/desmarca los bloques con la clase CSS
+    const applyCtxMenuHighlight = () => {
+      const allBlocks = this.workspace.getAllBlocks(false);
+      for (const block of allBlocks) {
+        const svgRoot = block.getSvgRoot?.();
+        if (!svgRoot) continue;
+        if (CTX_MENU_TYPES.has(block.type)) {
+          svgRoot.classList.add('blockly-ctx-menu');
+        } else {
+          svgRoot.classList.remove('blockly-ctx-menu');
+        }
+      }
+    };
+
+    // Aplicar en cada cambio del workspace (nuevo bloque, movimiento, borrado)
+    this.workspace.addChangeListener((e) => {
+      // Solo re-marcar en eventos que cambian la estructura visual
+      const structural = [
+        Blockly.Events.BLOCK_CREATE,
+        Blockly.Events.BLOCK_DELETE,
+        Blockly.Events.BLOCK_MOVE,
+        Blockly.Events.BLOCK_CHANGE,
+        Blockly.Events.FINISHED_LOADING,
+      ];
+      if (structural.includes(e.type)) {
+        // Pequeño timeout para que Blockly termine de renderizar el SVG
+        setTimeout(applyCtxMenuHighlight, 30);
+      }
+    });
+
+    // Aplicar al arrancar por si hay bloques precargados
+    setTimeout(applyCtxMenuHighlight, 200);
   },
 
   // ============================================================
@@ -1563,10 +1642,10 @@ export const AppController = {
 
     const { tables, relations } = data;
 
-    // ── Constantes de layout 
+    // ── Constantes de layout ────────────────────────────────────────────────
     const CARD_W = 230;
-    const CARD_GAP = 52;    // espacio entre columnas
-    const ROW_GAP = 60;    // espacio entre filas
+    const CARD_GAP = 52;
+    const ROW_GAP = 60;
     const HEADER_H = 34;
     const ROW_H = 24;
     const PADDING = 36;
@@ -1576,11 +1655,8 @@ export const AppController = {
         ? HEADER_H + Math.max(1, tables[name].length) * ROW_H + 10
         : 0;
 
-    // ── Posiciones por tabla: [fila, columna] ───────────────────────────────
-    // Replica el layout de la imagen de SSMS.
-    // Las tablas ausentes en el dataset simplemente no se renderizan.
+    // ── Layout fijo Chinook ─────────────────────────────────────────────────
     const LAYOUT = [
-      // [ tableName, row, col ]
       ['Artist', 0, 0],
       ['Album', 0, 1],
       ['Track', 0, 2],
@@ -1594,30 +1670,24 @@ export const AppController = {
       ['Invoice', 3, 1],
     ];
 
-    // Tablas del dataset que no están en el layout → agregarlas al final
     const layoutNames = new Set(LAYOUT.map(([n]) => n));
     const extraNames = Object.keys(tables).filter(n => !layoutNames.has(n));
-    const maxRow = Math.max(...LAYOUT.map(([, r]) => r));
-    extraNames.forEach((name, i) => {
-      LAYOUT.push([name, maxRow + 1, i]);
-    });
+    const maxLayoutRow = Math.max(...LAYOUT.map(([, r]) => r));
+    extraNames.forEach((name, i) => LAYOUT.push([name, maxLayoutRow + 1, i]));
 
-    // ── Calcular altura máxima por fila ─────────────────────────────────────
+    // ── Alturas por fila ────────────────────────────────────────────────────
     const rowCount = Math.max(...LAYOUT.map(([, r]) => r)) + 1;
     const rowMaxH = Array.from({ length: rowCount }, (_, r) => {
-      const tablesInRow = LAYOUT
-        .filter(([n, row]) => row === r && tables[n])
-        .map(([n]) => cardH(n));
-      return tablesInRow.length ? Math.max(...tablesInRow) : 0;
+      const hs = LAYOUT.filter(([n, row]) => row === r && tables[n]).map(([n]) => cardH(n));
+      return hs.length ? Math.max(...hs) : 0;
     });
 
-    // ── Offsets Y acumulados por fila ────────────────────────────────────────
     const rowOffsetY = [PADDING];
     for (let r = 1; r < rowCount; r++) {
       rowOffsetY[r] = rowOffsetY[r - 1] + rowMaxH[r - 1] + ROW_GAP;
     }
 
-    // ── Calcular posición absoluta de cada tarjeta ──────────────────────────
+    // ── Posiciones absolutas ────────────────────────────────────────────────
     const cardPos = {};
     for (const [name, row, col] of LAYOUT) {
       if (!tables[name]) continue;
@@ -1629,13 +1699,11 @@ export const AppController = {
       };
     }
 
-    // ── Dimensiones totales ──────────────────────────────────────────────────
     const maxCol = Math.max(...LAYOUT.map(([, , c]) => c));
     const totalW = PADDING * 2 + (maxCol + 1) * CARD_W + maxCol * CARD_GAP;
-    const lastRow = rowCount - 1;
-    const totalH = rowOffsetY[lastRow] + rowMaxH[lastRow] + PADDING;
+    const totalH = rowOffsetY[rowCount - 1] + rowMaxH[rowCount - 1] + PADDING;
 
-    // ── Colores ──────────────────────────────────────────────────────────────
+    // ── Colores ─────────────────────────────────────────────────────────────
     const C = {
       headerBg: 'rgba(75, 55, 175, 0.88)',
       cardBg: 'rgba(18, 16, 42, 0.97)',
@@ -1650,7 +1718,7 @@ export const AppController = {
       fkLineSelf: 'rgba(255, 175, 45, 0.5)',
     };
 
-    // ── Líneas FK ────────────────────────────────────────────────────────────
+    // ── Líneas FK ───────────────────────────────────────────────────────────
     const lines = relations.map(rel => {
       const from = cardPos[rel.from];
       const to = cardPos[rel.to];
@@ -1666,20 +1734,15 @@ export const AppController = {
       const toRowY = to.y + HEADER_H +
         (toColIdx >= 0 ? toColIdx * ROW_H + ROW_H / 2 : ROW_H / 2);
 
-      // Auto-relación (Employee → Employee)
       if (rel.from === rel.to) {
-        const x1 = from.x + from.w;
-        const x2 = to.x + to.w;
         return {
-          x1, y1: fromRowY, x2, y2: toRowY,
-          self: true, color: C.fkLineSelf,
+          x1: from.x + from.w, y1: fromRowY, x2: to.x + to.w, y2: toRowY,
+          self: true, color: C.fkLineSelf
         };
       }
 
-      // Lado de conexión según posición relativa
       const fromIsLeft = from.x + from.w <= to.x + 10;
       const fromIsRight = from.x >= to.x + to.w - 10;
-
       let x1, x2, cx1, cx2;
 
       if (fromIsLeft) {
@@ -1687,29 +1750,23 @@ export const AppController = {
       } else if (fromIsRight) {
         x1 = from.x; x2 = to.x + to.w;
       } else {
-        // Misma columna o solapados — salir por la derecha de ambas
-        x1 = from.x + from.w;
-        x2 = to.x + to.w;
-        cx1 = x1 + 40;
-        cx2 = x2 + 40;
+        x1 = from.x + from.w; x2 = to.x + to.w;
+        cx1 = x1 + 40; cx2 = x2 + 40;
         return { x1, y1: fromRowY, x2, y2: toRowY, cx1, cx2, self: false, color: C.fkLine };
       }
 
       cx1 = x1 + (x2 - x1) * 0.42;
       cx2 = x2 - (x2 - x1) * 0.42;
-
       return { x1, y1: fromRowY, x2, y2: toRowY, cx1, cx2, self: false, color: C.fkLine };
     }).filter(Boolean);
 
     // ── SVG defs ─────────────────────────────────────────────────────────────
     const defs = `
       <defs>
-        <marker id="fk-arr" markerWidth="7" markerHeight="7"
-          refX="5" refY="3" orient="auto">
+        <marker id="fk-arr" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto">
           <path d="M0,0 L0,6 L7,3 z" fill="${C.fkColor}" opacity="0.75"/>
         </marker>
-        <marker id="fk-arr-self" markerWidth="7" markerHeight="7"
-          refX="5" refY="3" orient="auto">
+        <marker id="fk-arr-self" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto">
           <path d="M0,0 L0,6 L7,3 z" fill="${C.fkLineSelf}" opacity="0.75"/>
         </marker>
       </defs>`;
@@ -1755,18 +1812,14 @@ export const AppController = {
           card += `<line x1="${x + 1}" y1="${cy}" x2="${x + w - 1}" y2="${cy}"
             stroke="${C.divider}" stroke-width="1"/>`;
         }
-
         card += `<text x="${x + 10}" y="${cy + ROW_H / 2 + 5}"
           fill="${textColor}" font-size="11">${icon}</text>`;
-
         card += `<text x="${x + 26}" y="${cy + ROW_H / 2 + 5}"
           fill="${textColor}" font-size="11"
           font-family="'Fira Code', monospace">${col.name}</text>`;
-
         if (!isPK && !isFK) {
           card += `<text x="${x + w - 8}" y="${cy + ROW_H / 2 + 5}"
-            fill="${C.colType}" font-size="10"
-            font-family="'Fira Code', monospace"
+            fill="${C.colType}" font-size="10" font-family="'Fira Code', monospace"
             text-anchor="end">${col.type}</text>`;
         }
       });
@@ -1776,27 +1829,199 @@ export const AppController = {
           fill="rgba(255,255,255,0.2)" font-size="11"
           text-anchor="middle" font-style="italic">sin columnas</text>`;
       }
-
       return card;
     }).join('\n');
 
-    // ── Inyectar ──────────────────────────────────────────────────────────────
+    // ── HTML del contenedor con pan/zoom ─────────────────────────────────────
     container.innerHTML = `
       <div style="
         font-size: 10px;
         color: rgba(255,255,255,0.25);
         text-transform: uppercase;
         letter-spacing: 0.08em;
-        margin-bottom: 10px;
+        margin-bottom: 8px;
       ">Base de datos — Chinook</div>
-      <div style="overflow-x: auto; overflow-y: auto;">
-        <svg xmlns="http://www.w3.org/2000/svg"
-          width="${totalW}" height="${totalH}" style="display: block;">
-          ${defs}
-          ${linesSVG}
-          ${cardsSVG}
-        </svg>
+ 
+      <!-- Viewport con pan+zoom -->
+      <div id="erdViewport" style="
+        position: relative;
+        overflow: hidden;
+        width: 100%;
+        height: 520px;
+        border-radius: 8px;
+        cursor: grab;
+        background: rgba(10, 8, 28, 0.6);
+        border: 1px solid rgba(100, 82, 210, 0.2);
+      ">
+        <!-- Canvas SVG transformable -->
+        <div id="erdCanvas" style="
+          position: absolute;
+          top: 0; left: 0;
+          transform-origin: 0 0;
+          will-change: transform;
+        ">
+          <svg xmlns="http://www.w3.org/2000/svg"
+            width="${totalW}" height="${totalH}" style="display:block;">
+            ${defs}
+            ${linesSVG}
+            ${cardsSVG}
+          </svg>
+        </div>
+ 
+        <!-- Controles flotantes -->
+        <div style="
+          position: absolute;
+          bottom: 14px;
+          right: 14px;
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+          z-index: 10;
+        ">
+          <button id="erdZoomIn" title="Zoom in" style="
+            width: 32px; height: 32px;
+            background: rgba(30, 25, 65, 0.92);
+            border: 1px solid rgba(100, 82, 210, 0.5);
+            border-radius: 6px;
+            color: rgba(255,255,255,0.75);
+            font-size: 18px; line-height: 1;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+          ">+</button>
+          <button id="erdZoomOut" title="Zoom out" style="
+            width: 32px; height: 32px;
+            background: rgba(30, 25, 65, 0.92);
+            border: 1px solid rgba(100, 82, 210, 0.5);
+            border-radius: 6px;
+            color: rgba(255,255,255,0.75);
+            font-size: 18px; line-height: 1;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+          ">−</button>
+          <button id="erdFit" title="Resetear vista" style="
+            width: 32px; height: 32px;
+            background: rgba(30, 25, 65, 0.92);
+            border: 1px solid rgba(100, 82, 210, 0.5);
+            border-radius: 6px;
+            color: rgba(255,255,255,0.75);
+            font-size: 14px; line-height: 1;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+          ">⊡</button>
+        </div>
       </div>
     `;
+
+    // ── Lógica de pan + zoom ──────────────────────────────────────────────────
+    const viewport = document.getElementById('erdViewport');
+    const canvas = document.getElementById('erdCanvas');
+    if (!viewport || !canvas) return;
+
+    // Estado
+    let scale = 1;
+    let transX = 0;
+    let transY = 0;
+    const SCALE_MIN = 0.2;
+    const SCALE_MAX = 2.5;
+    const SCALE_STEP = 0.15;
+
+    function applyTransform() {
+      canvas.style.transform = `translate(${transX}px, ${transY}px) scale(${scale})`;
+    }
+
+    function clampPan() {
+      // Límites suaves: dejar al menos 80px de diagrama visible en cada borde
+      const vw = viewport.clientWidth;
+      const vh = viewport.clientHeight;
+      const margin = 80;
+      const scaledW = totalW * scale;
+      const scaledH = totalH * scale;
+
+      transX = Math.min(transX, vw - margin);
+      transX = Math.max(transX, margin - scaledW);
+      transY = Math.min(transY, vh - margin);
+      transY = Math.max(transY, margin - scaledH);
+    }
+
+    function zoomAt(delta, cx, cy) {
+      // Zoom centrado en el punto (cx, cy) relativo al viewport
+      const newScale = Math.min(SCALE_MAX, Math.max(SCALE_MIN, scale + delta));
+      const ratio = newScale / scale;
+      transX = cx - ratio * (cx - transX);
+      transY = cy - ratio * (cy - transY);
+      scale = newScale;
+      clampPan();
+      applyTransform();
+    }
+
+    function fitView() {
+      const vw = viewport.clientWidth;
+      const vh = viewport.clientHeight;
+      const fitScale = Math.min(vw / totalW, vh / totalH, 1);
+      scale = fitScale;
+      transX = (vw - totalW * fitScale) / 2;
+      transY = (vh - totalH * fitScale) / 2;
+      applyTransform();
+    }
+
+    // Fit inicial
+    fitView();
+
+    // ── Botones ───────────────────────────────────────────────────────────────
+    document.getElementById('erdZoomIn')?.addEventListener('click', () => {
+      const vw = viewport.clientWidth;
+      const vh = viewport.clientHeight;
+      zoomAt(SCALE_STEP, vw / 2, vh / 2);
+    });
+
+    document.getElementById('erdZoomOut')?.addEventListener('click', () => {
+      const vw = viewport.clientWidth;
+      const vh = viewport.clientHeight;
+      zoomAt(-SCALE_STEP, vw / 2, vh / 2);
+    });
+
+    document.getElementById('erdFit')?.addEventListener('click', fitView);
+
+    // ── Ctrl + rueda del mouse → zoom ─────────────────────────────────────────
+    viewport.addEventListener('wheel', (e) => {
+      if (!e.ctrlKey) return;
+      e.preventDefault();
+      const rect = viewport.getBoundingClientRect();
+      const cx = e.clientX - rect.left;
+      const cy = e.clientY - rect.top;
+      const delta = e.deltaY < 0 ? SCALE_STEP : -SCALE_STEP;
+      zoomAt(delta, cx, cy);
+    }, { passive: false });
+
+    // ── Pan: click + drag ─────────────────────────────────────────────────────
+    let isDragging = false;
+    let dragStartX = 0;
+    let dragStartY = 0;
+    let panStartX = 0;
+    let panStartY = 0;
+
+    viewport.addEventListener('mousedown', (e) => {
+      if (e.button !== 0) return;
+      isDragging = true;
+      dragStartX = e.clientX;
+      dragStartY = e.clientY;
+      panStartX = transX;
+      panStartY = transY;
+      viewport.style.cursor = 'grabbing';
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+      transX = panStartX + (e.clientX - dragStartX);
+      transY = panStartY + (e.clientY - dragStartY);
+      clampPan();
+      applyTransform();
+    });
+
+    window.addEventListener('mouseup', () => {
+      if (!isDragging) return;
+      isDragging = false;
+      viewport.style.cursor = 'grab';
+    });
   },
 };
