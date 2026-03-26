@@ -800,20 +800,20 @@ export const AppController = {
             <thead>
               <tr>
                 ${headers.map((h, idx) => {
-                  // Detectar columnas sin alias (nombre vacío, numérico, o sufijo _N de duplicado)
-                  const isUnnamed = !h || /^\d+$/.test(h);
-                  const isDuplicated = headers.filter(x => x === h).length > 1;
-                  const needsAlias = isUnnamed || isDuplicated;
-                  const displayH = isUnnamed ? `(columna ${idx + 1})` : h;
-                  const hint = needsAlias
-                    ? `<span title="Usa AS para nombrar esta columna" style="
+        // Detectar columnas sin alias (nombre vacío, numérico, o sufijo _N de duplicado)
+        const isUnnamed = !h || /^\d+$/.test(h);
+        const isDuplicated = headers.filter(x => x === h).length > 1;
+        const needsAlias = isUnnamed || isDuplicated;
+        const displayH = isUnnamed ? `(columna ${idx + 1})` : h;
+        const hint = needsAlias
+          ? `<span title="Usa AS para nombrar esta columna" style="
                         margin-left: 4px; font-size: 0.65rem; vertical-align: middle;
                         background: rgba(255,200,50,0.18); color: #ffd54f;
                         border: 1px solid rgba(255,200,50,0.3);
                         border-radius: 3px; padding: 1px 4px; cursor: help;
                       ">AS?</span>`
-                    : '';
-                  return `
+          : '';
+        return `
                     <th style="
                       padding: 7px 14px;
                       background: rgba(122, 92, 255, 0.35);
@@ -823,7 +823,7 @@ export const AppController = {
                       white-space: nowrap;
                     ">${displayH}${hint}</th>
                   `;
-                }).join('')}
+      }).join('')}
               </tr>
             </thead>
             <tbody>

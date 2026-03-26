@@ -14,7 +14,7 @@ export const ORDER_BY_DEFINITION = {
   "previousStatement": "SQL_STATEMENT",
   "nextStatement": "SQL_STATEMENT",
   "colour": 230,
-  "tooltip": "Ordena los resultados. Conecta una o más expresiones de orden.",
+  "tooltip": "Ordena los resultados. Conecta una o más expresiones y el orden en que quieres presentarlos.",
   "helpUrl": ""
 };
 
