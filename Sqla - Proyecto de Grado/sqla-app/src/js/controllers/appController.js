@@ -727,9 +727,20 @@ export const AppController = {
     sqlDiv.style.display = 'block';
 
     if (!result.ok) {
+      // El error ya viene humanizado desde el backend cuando es un error del parser.
+      // Para errores de red u otros, se muestra el mensaje directamente.
+      const errMsg = result.error || 'Error desconocido al ejecutar la consulta.';
       sqlDiv.innerHTML = `
         <h2>Error al ejecutar</h2>
-        <pre style="color: #ff5555;">❌ ${result.error}</pre>
+        <div style="
+          background: rgba(255, 50, 50, 0.08);
+          border: 1px solid rgba(255, 80, 80, 0.3);
+          border-radius: 6px;
+          padding: 12px 16px;
+          margin-top: 10px;
+        ">
+          <span style="color: #ff6b6b; font-size: 0.9rem;">❌ ${errMsg}</span>
+        </div>
         ${originalSQL ? `
           <details style="margin-top: 8px; cursor: pointer;">
             <summary style="color: rgba(255,255,255,0.4); font-size: 0.8rem;">SQL que se intentó ejecutar</summary>
@@ -744,11 +755,40 @@ export const AppController = {
     const rows = executionResult?.rows || [];
     const rowsAffected = executionResult?.rowsAffected?.[0] ?? null;
 
-    // Construir tabla de resultados si hay filas
+    // ── Determinar headers ───────────────────────────────────────────────────
+    // Usamos columnOrder del backend (metadatos del driver mssql) para preservar
+    // el orden exacto y detectar columnas duplicadas que vendrían como col, col_1, etc.
+    // Si no está disponible, caemos al Object.keys como fallback.
+    let headers = [];
+    let columnKeys = []; // las claves reales en el objeto row para acceder al valor
+
+    if (rows.length > 0) {
+      const columnOrder = executionResult?.columnOrder;
+
+      if (columnOrder && columnOrder.length > 0) {
+        // columnOrder viene del driver mssql con los nombres reales en posición
+        headers = columnOrder;
+        // El driver también indexa los duplicados como name_1, name_2, etc. en el objeto
+        // Debemos usar esas claves internas para acceder a los datos correctamente.
+        // Si hay menos claves que headers, usamos los headers directamente.
+        const rowKeys = Object.keys(rows[0]);
+        if (rowKeys.length === columnOrder.length) {
+          // Alineación directa por índice (el orden de Object.keys en mssql es el de inserción)
+          columnKeys = rowKeys;
+        } else {
+          columnKeys = columnOrder.map(h => rowKeys.find(k => k === h) ?? h);
+        }
+      } else {
+        // Fallback: sin metadatos de columna
+        headers = Object.keys(rows[0]);
+        columnKeys = headers;
+      }
+    }
+
+    // ── Construir tabla de resultados ────────────────────────────────────────
     let contentHTML = '';
 
     if (rows.length > 0) {
-      const headers = Object.keys(rows[0]);
       contentHTML = `
         <div style="overflow-x: auto; margin-top: 10px;">
           <table style="
@@ -759,27 +799,42 @@ export const AppController = {
           ">
             <thead>
               <tr>
-                ${headers.map(h => `
-                  <th style="
-                    padding: 7px 14px;
-                    background: rgba(122, 92, 255, 0.35);
-                    border: 1px solid rgba(255,255,255,0.15);
-                    color: #fff;
-                    text-align: left;
-                    white-space: nowrap;
-                  ">${h}</th>
-                `).join('')}
+                ${headers.map((h, idx) => {
+                  // Detectar columnas sin alias (nombre vacío, numérico, o sufijo _N de duplicado)
+                  const isUnnamed = !h || /^\d+$/.test(h);
+                  const isDuplicated = headers.filter(x => x === h).length > 1;
+                  const needsAlias = isUnnamed || isDuplicated;
+                  const displayH = isUnnamed ? `(columna ${idx + 1})` : h;
+                  const hint = needsAlias
+                    ? `<span title="Usa AS para nombrar esta columna" style="
+                        margin-left: 4px; font-size: 0.65rem; vertical-align: middle;
+                        background: rgba(255,200,50,0.18); color: #ffd54f;
+                        border: 1px solid rgba(255,200,50,0.3);
+                        border-radius: 3px; padding: 1px 4px; cursor: help;
+                      ">AS?</span>`
+                    : '';
+                  return `
+                    <th style="
+                      padding: 7px 14px;
+                      background: rgba(122, 92, 255, 0.35);
+                      border: 1px solid rgba(255,255,255,0.15);
+                      color: #fff;
+                      text-align: left;
+                      white-space: nowrap;
+                    ">${displayH}${hint}</th>
+                  `;
+                }).join('')}
               </tr>
             </thead>
             <tbody>
               ${rows.map((row, i) => `
                 <tr style="background: ${i % 2 === 0 ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.04)'};">
-                  ${headers.map(h => `
+                  ${columnKeys.map(k => `
                     <td style="
                       padding: 5px 14px;
                       border: 1px solid rgba(255,255,255,0.08);
                       color: #00ff99;
-                    ">${row[h] ?? '<span style="color:#666">NULL</span>'}</td>
+                    ">${row[k] ?? '<span style="color:#666">NULL</span>'}</td>
                   `).join('')}
                 </tr>
               `).join('')}
@@ -813,6 +868,7 @@ export const AppController = {
       this.updateMermaidFromAST(ast);
     }
   },
+
 
   // ============================================================
   // MÉTODO: forzar recalculo de métricas de Blockly
@@ -1414,8 +1470,7 @@ export const AppController = {
   // Renderiza el panel mermaidDiv completo:
   //   - Barra de pestañas (DDL / DML)
   //   - Contenido según la pestaña activa
-  // Llamado desde: showMermaidBtn click, toolbox category click,
-  //                workspace change listener (solo si panel ya abierto y tab = 'ddl')
+  // Llamado desde: showMermaidBtn click, toolbox category click, workspace change listener (solo si panel ya abierto y tab = 'ddl')
   // ───────────────────────────────────────────────────────────────────────
 
   openErdPanel: async function (tab) {
@@ -1502,155 +1557,181 @@ export const AppController = {
     }
   },
 
+
   renderChinookCards: function (data, container) {
     if (!data || !data.tables) return;
 
     const { tables, relations } = data;
-    const tableNames = Object.keys(tables);
 
-    // ── Layout: posiciones en grid para las tarjetas ────────────────────────
-    // Calculamos columnas según cantidad de tablas
-    const COLS = Math.min(4, tableNames.length);
-    const CARD_W = 240;
-    const CARD_GAP = 48;
+    // ── Constantes de layout 
+    const CARD_W = 230;
+    const CARD_GAP = 52;    // espacio entre columnas
+    const ROW_GAP = 60;    // espacio entre filas
     const HEADER_H = 34;
-    const ROW_H = 26;
-    const PADDING = 32;   // margen perimetral del canvas
+    const ROW_H = 24;
+    const PADDING = 36;
 
-    // Calcular altura de cada tarjeta según sus columnas
-    const cardHeights = {};
-    tableNames.forEach(name => {
-      cardHeights[name] = HEADER_H + Math.max(1, tables[name].length) * ROW_H + 12;
+    const cardH = (name) =>
+      tables[name]
+        ? HEADER_H + Math.max(1, tables[name].length) * ROW_H + 10
+        : 0;
+
+    // ── Posiciones por tabla: [fila, columna] ───────────────────────────────
+    // Replica el layout de la imagen de SSMS.
+    // Las tablas ausentes en el dataset simplemente no se renderizan.
+    const LAYOUT = [
+      // [ tableName, row, col ]
+      ['Artist', 0, 0],
+      ['Album', 0, 1],
+      ['Track', 0, 2],
+      ['MediaType', 0, 3],
+      ['Playlist', 1, 0],
+      ['PlaylistTrack', 1, 1],
+      ['Genre', 1, 3],
+      ['Employee', 2, 0],
+      ['Customer', 2, 1],
+      ['InvoiceLine', 2, 2],
+      ['Invoice', 3, 1],
+    ];
+
+    // Tablas del dataset que no están en el layout → agregarlas al final
+    const layoutNames = new Set(LAYOUT.map(([n]) => n));
+    const extraNames = Object.keys(tables).filter(n => !layoutNames.has(n));
+    const maxRow = Math.max(...LAYOUT.map(([, r]) => r));
+    extraNames.forEach((name, i) => {
+      LAYOUT.push([name, maxRow + 1, i]);
     });
 
-    // Asignar posición (col, row) a cada tabla
-    const positions = {};
-    tableNames.forEach((name, i) => {
-      const col = i % COLS;
-      const row = Math.floor(i / COLS);
-      positions[name] = { col, row };
+    // ── Calcular altura máxima por fila ─────────────────────────────────────
+    const rowCount = Math.max(...LAYOUT.map(([, r]) => r)) + 1;
+    const rowMaxH = Array.from({ length: rowCount }, (_, r) => {
+      const tablesInRow = LAYOUT
+        .filter(([n, row]) => row === r && tables[n])
+        .map(([n]) => cardH(n));
+      return tablesInRow.length ? Math.max(...tablesInRow) : 0;
     });
 
-    // Calcular offsets Y por fila (cada fila tiene la altura de la tarjeta más alta de esa fila)
-    const rowCount = Math.ceil(tableNames.length / COLS);
-    const rowHeights = Array.from({ length: rowCount }, (_, r) => {
-      const tablesInRow = tableNames.filter((_, i) => Math.floor(i / COLS) === r);
-      return Math.max(...tablesInRow.map(n => cardHeights[n]));
-    });
-
-    const rowOffsets = [PADDING];
+    // ── Offsets Y acumulados por fila ────────────────────────────────────────
+    const rowOffsetY = [PADDING];
     for (let r = 1; r < rowCount; r++) {
-      rowOffsets[r] = rowOffsets[r - 1] + rowHeights[r - 1] + CARD_GAP;
+      rowOffsetY[r] = rowOffsetY[r - 1] + rowMaxH[r - 1] + ROW_GAP;
     }
 
-    // Coordenadas absolutas de cada tarjeta
+    // ── Calcular posición absoluta de cada tarjeta ──────────────────────────
     const cardPos = {};
-    tableNames.forEach(name => {
-      const { col, row } = positions[name];
+    for (const [name, row, col] of LAYOUT) {
+      if (!tables[name]) continue;
       cardPos[name] = {
         x: PADDING + col * (CARD_W + CARD_GAP),
-        y: rowOffsets[row],
+        y: rowOffsetY[row],
         w: CARD_W,
-        h: cardHeights[name],
+        h: cardH(name),
       };
-    });
+    }
 
-    const totalW = PADDING * 2 + COLS * CARD_W + (COLS - 1) * CARD_GAP;
-    const totalH = rowOffsets[rowCount - 1] + rowHeights[rowCount - 1] + PADDING;
+    // ── Dimensiones totales ──────────────────────────────────────────────────
+    const maxCol = Math.max(...LAYOUT.map(([, , c]) => c));
+    const totalW = PADDING * 2 + (maxCol + 1) * CARD_W + maxCol * CARD_GAP;
+    const lastRow = rowCount - 1;
+    const totalH = rowOffsetY[lastRow] + rowMaxH[lastRow] + PADDING;
 
-    // ── Colores (glass, coherente con el resto de la UI) ────────────────────
+    // ── Colores ──────────────────────────────────────────────────────────────
     const C = {
-      headerBg: 'rgba(80, 60, 180, 0.82)',
-      cardBg: 'rgba(22, 20, 46, 0.96)',
-      cardBorder: 'rgba(110, 90, 230, 0.45)',
-      divider: 'rgba(255,255,255,0.07)',
-      colName: 'rgba(255,255,255,0.82)',
-      colType: 'rgba(255,255,255,0.35)',
+      headerBg: 'rgba(75, 55, 175, 0.88)',
+      cardBg: 'rgba(18, 16, 42, 0.97)',
+      cardBorder: 'rgba(100, 82, 210, 0.4)',
+      divider: 'rgba(255,255,255,0.06)',
+      colNormal: 'rgba(255,255,255,0.78)',
+      colType: 'rgba(255,255,255,0.32)',
       pkColor: '#f5c542',
       fkColor: '#4fc3f7',
       headerText: '#ffffff',
-      fkLine: 'rgba(79, 195, 247, 0.55)',   // línea FK — azul suave
-      fkLineSelf: 'rgba(255, 180, 50, 0.5)',    // auto-relación (Employee→Employee)
+      fkLine: 'rgba(79, 195, 247, 0.45)',
+      fkLineSelf: 'rgba(255, 175, 45, 0.5)',
     };
 
-    // ── Calcular puntos de conexión para las líneas FK ──────────────────────
-    // Cada línea conecta el centro-derecho de la col FK con el centro-izquierdo de la PK destino
+    // ── Líneas FK ────────────────────────────────────────────────────────────
     const lines = relations.map(rel => {
       const from = cardPos[rel.from];
       const to = cardPos[rel.to];
       if (!from || !to) return null;
 
-      // Índice de la columna FK en la tabla origen
       const fromCols = tables[rel.from] || [];
       const fromColIdx = fromCols.findIndex(c => c.name === rel.fromCol);
-      const fromRowY = from.y + HEADER_H + (fromColIdx >= 0 ? fromColIdx * ROW_H + ROW_H / 2 : ROW_H / 2);
+      const fromRowY = from.y + HEADER_H +
+        (fromColIdx >= 0 ? fromColIdx * ROW_H + ROW_H / 2 : ROW_H / 2);
 
-      // Índice de la columna PK en la tabla destino
       const toCols = tables[rel.to] || [];
       const toColIdx = toCols.findIndex(c => c.pk);
-      const toRowY = to.y + HEADER_H + (toColIdx >= 0 ? toColIdx * ROW_H + ROW_H / 2 : ROW_H / 2);
+      const toRowY = to.y + HEADER_H +
+        (toColIdx >= 0 ? toColIdx * ROW_H + ROW_H / 2 : ROW_H / 2);
 
-      // Decidir si la línea sale por la derecha o izquierda según posición relativa
-      const fromRight = from.x + from.w < to.x + 20;   // from está a la izquierda
-      const fromLeft = from.x > to.x + to.w - 20;     // from está a la derecha
+      // Auto-relación (Employee → Employee)
+      if (rel.from === rel.to) {
+        const x1 = from.x + from.w;
+        const x2 = to.x + to.w;
+        return {
+          x1, y1: fromRowY, x2, y2: toRowY,
+          self: true, color: C.fkLineSelf,
+        };
+      }
+
+      // Lado de conexión según posición relativa
+      const fromIsLeft = from.x + from.w <= to.x + 10;
+      const fromIsRight = from.x >= to.x + to.w - 10;
 
       let x1, x2, cx1, cx2;
 
-      if (rel.from === rel.to) {
-        // Auto-relación — curva hacia afuera por la derecha
-        x1 = from.x + from.w; x2 = to.x + to.w;
-        return { x1, y1: fromRowY, x2, y2: toRowY, self: true, label: rel.fromCol, color: C.fkLineSelf };
-      }
-
-      if (fromRight) {
+      if (fromIsLeft) {
         x1 = from.x + from.w; x2 = to.x;
-      } else if (fromLeft) {
+      } else if (fromIsRight) {
         x1 = from.x; x2 = to.x + to.w;
       } else {
-        // Misma columna del grid — conectar por la derecha de ambas
-        x1 = from.x + from.w; x2 = to.x + to.w;
+        // Misma columna o solapados — salir por la derecha de ambas
+        x1 = from.x + from.w;
+        x2 = to.x + to.w;
+        cx1 = x1 + 40;
+        cx2 = x2 + 40;
+        return { x1, y1: fromRowY, x2, y2: toRowY, cx1, cx2, self: false, color: C.fkLine };
       }
 
-      cx1 = x1 + (x2 - x1) * 0.45;
-      cx2 = x2 - (x2 - x1) * 0.45;
+      cx1 = x1 + (x2 - x1) * 0.42;
+      cx2 = x2 - (x2 - x1) * 0.42;
 
-      return { x1, y1: fromRowY, x2, y2: toRowY, cx1, cx2, self: false, label: rel.fromCol, color: C.fkLine };
+      return { x1, y1: fromRowY, x2, y2: toRowY, cx1, cx2, self: false, color: C.fkLine };
     }).filter(Boolean);
 
-    // ── Construir SVG ───────────────────────────────────────────────────────
-    // Marcador de flecha FK
+    // ── SVG defs ─────────────────────────────────────────────────────────────
     const defs = `
       <defs>
-        <marker id="fk-arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
-          <path d="M0,0 L0,6 L8,3 z" fill="${C.fkColor}" opacity="0.7"/>
+        <marker id="fk-arr" markerWidth="7" markerHeight="7"
+          refX="5" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L7,3 z" fill="${C.fkColor}" opacity="0.75"/>
         </marker>
-        <marker id="fk-arrow-self" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
-          <path d="M0,0 L0,6 L8,3 z" fill="${C.fkLineSelf}" opacity="0.7"/>
+        <marker id="fk-arr-self" markerWidth="7" markerHeight="7"
+          refX="5" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L7,3 z" fill="${C.fkLineSelf}" opacity="0.75"/>
         </marker>
-      </defs>
-    `;
+      </defs>`;
 
-    // Líneas FK (se dibujan primero, detrás de las tarjetas)
+    // ── SVG líneas ────────────────────────────────────────────────────────────
     const linesSVG = lines.map(l => {
-      const markerId = l.self ? 'fk-arrow-self' : 'fk-arrow';
+      const mid = l.self ? 'fk-arr-self' : 'fk-arr';
       if (l.self) {
-        const rx = 36, ry = 28;
-        return `<path d="M${l.x1},${l.y1} C${l.x1 + rx},${l.y1 - ry} ${l.x2 + rx},${l.y2 - ry} ${l.x2},${l.y2}"
-          fill="none" stroke="${l.color}" stroke-width="1.5" stroke-dasharray="5,3"
-          marker-end="url(#${markerId})"/>`;
+        return `<path d="M${l.x1},${l.y1} C${l.x1 + 44},${l.y1 - 34} ${l.x2 + 44},${l.y2 - 34} ${l.x2},${l.y2}"
+          fill="none" stroke="${l.color}" stroke-width="1.4" stroke-dasharray="4,3"
+          marker-end="url(#${mid})"/>`;
       }
       return `<path d="M${l.x1},${l.y1} C${l.cx1},${l.y1} ${l.cx2},${l.y2} ${l.x2},${l.y2}"
-        fill="none" stroke="${l.color}" stroke-width="1.5" stroke-dasharray="5,3"
-        marker-end="url(#${markerId})"/>`;
+        fill="none" stroke="${l.color}" stroke-width="1.4" stroke-dasharray="4,3"
+        marker-end="url(#${mid})"/>`;
     }).join('\n');
 
-    // Tarjetas
-    const cardsSVG = tableNames.map(name => {
-      const { x, y, w, h } = cardPos[name];
+    // ── SVG tarjetas ──────────────────────────────────────────────────────────
+    const cardsSVG = Object.entries(cardPos).map(([name, { x, y, w, h }]) => {
       const cols = tables[name];
       const rx = 7;
 
-      // Header
       let card = `
         <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${rx}" ry="${rx}"
           fill="${C.cardBg}" stroke="${C.cardBorder}" stroke-width="1"/>
@@ -1663,75 +1744,54 @@ export const AppController = {
           font-family="'Fira Code', monospace">${name}</text>
       `;
 
-      // Columnas
       cols.forEach((col, i) => {
         const cy = y + HEADER_H + i * ROW_H;
-        const textColor = col.pk ? C.pkColor : col.fk ? C.fkColor : C.colName;
+        const isPK = col.pk;
+        const isFK = !!col.fk;
+        const textColor = isPK ? C.pkColor : isFK ? C.fkColor : C.colNormal;
+        const icon = isPK ? '🔑' : isFK ? '🔗' : '○';
 
-        // Separador
         if (i > 0) {
           card += `<line x1="${x + 1}" y1="${cy}" x2="${x + w - 1}" y2="${cy}"
             stroke="${C.divider}" stroke-width="1"/>`;
         }
 
-        // Icono
-        const icon = col.pk ? '🔑' : col.fk ? '🔗' : '○';
         card += `<text x="${x + 10}" y="${cy + ROW_H / 2 + 5}"
           fill="${textColor}" font-size="11">${icon}</text>`;
 
-        // Nombre columna
         card += `<text x="${x + 26}" y="${cy + ROW_H / 2 + 5}"
           fill="${textColor}" font-size="11"
           font-family="'Fira Code', monospace">${col.name}</text>`;
 
-        // Tipo (alineado a la derecha)
-        card += `<text x="${x + w - 8}" y="${cy + ROW_H / 2 + 5}"
-          fill="${C.colType}" font-size="10"
-          font-family="'Fira Code', monospace"
-          text-anchor="end">${col.type}</text>`;
-
-        // Badge PK / FK
-        if (col.pk || col.fk) {
-          const badge = col.pk ? 'PK' : 'FK';
-          const bgCol = col.pk ? 'rgba(245,197,66,0.18)' : 'rgba(79,195,247,0.15)';
-          const txCol = col.pk ? C.pkColor : C.fkColor;
-          const bx = x + w - 36;
-          const by = cy + 5;
-          card += `
-            <rect x="${bx}" y="${by}" width="22" height="14" rx="3"
-              fill="${bgCol}" stroke="${txCol}" stroke-width="0.5" opacity="0.8"/>
-            <text x="${bx + 11}" y="${by + 10.5}"
-              fill="${txCol}" font-size="9" font-weight="600"
-              text-anchor="middle">${badge}</text>
-          `;
+        if (!isPK && !isFK) {
+          card += `<text x="${x + w - 8}" y="${cy + ROW_H / 2 + 5}"
+            fill="${C.colType}" font-size="10"
+            font-family="'Fira Code', monospace"
+            text-anchor="end">${col.type}</text>`;
         }
       });
 
       if (cols.length === 0) {
-        card += `<text x="${x + w / 2}" y="${y + HEADER_H + 20}"
-          fill="rgba(255,255,255,0.25)" font-size="11" text-anchor="middle"
-          font-style="italic">sin columnas</text>`;
+        card += `<text x="${x + w / 2}" y="${y + HEADER_H + 18}"
+          fill="rgba(255,255,255,0.2)" font-size="11"
+          text-anchor="middle" font-style="italic">sin columnas</text>`;
       }
 
       return card;
     }).join('\n');
 
-    // ── Inyectar en el contenedor ───────────────────────────────────────────
+    // ── Inyectar ──────────────────────────────────────────────────────────────
     container.innerHTML = `
       <div style="
-        font-size: 11px;
-        color: rgba(255,255,255,0.3);
+        font-size: 10px;
+        color: rgba(255,255,255,0.25);
         text-transform: uppercase;
-        letter-spacing: 0.07em;
-        margin-bottom: 12px;
+        letter-spacing: 0.08em;
+        margin-bottom: 10px;
       ">Base de datos — Chinook</div>
       <div style="overflow-x: auto; overflow-y: auto;">
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="${totalW}"
-          height="${totalH}"
-          style="display: block;"
-        >
+        <svg xmlns="http://www.w3.org/2000/svg"
+          width="${totalW}" height="${totalH}" style="display: block;">
           ${defs}
           ${linesSVG}
           ${cardsSVG}

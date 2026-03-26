@@ -1,4 +1,4 @@
-import { parseSQL } from "../services/sqlParser.service.js";
+import { parseSQL, humanizeParseError } from "../services/sqlParser.service.js";
 import { validateQuery } from "../services/queryValidator.js";
 import { executeSQL } from "../services/sqlExecutor.service.js";
 import { validateSession, updateLastUsed } from "../services/session.service.js";
@@ -64,9 +64,10 @@ export async function analyzeSQL(req, res) {
 
     } catch (err) {
         console.error("ERROR COMPLETO:", err);
+        const friendlyError = humanizeParseError(err.message);
         return res.status(500).json({
             ok: false,
-            error: err.message
+            error: friendlyError
         });
     }
 }

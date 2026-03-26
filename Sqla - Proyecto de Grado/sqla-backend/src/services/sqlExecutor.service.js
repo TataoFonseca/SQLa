@@ -73,8 +73,21 @@ export async function executeSQL(sqlQuery, schemaName) {
 
         const result = await pool.request().query(finalQuery);
 
+        // Extraer orden y nombres de columnas desde los metadatos del driver mssql.
+        // recordset.columns es un objeto { colName: { index, name, ... } } — pero
+        // en JOINs con columnas del mismo nombre el driver las indexa así:
+        // { NombreA: {...}, NombreB: {...}, NombreB_1: {...} }
+        // Ordenamos por index para reproducir el orden original.
+        let columnOrder = [];
+        if (result.recordset && result.recordset.columns) {
+            columnOrder = Object.values(result.recordset.columns)
+                .sort((a, b) => a.index - b.index)
+                .map(c => c.name);
+        }
+
         return {
             rows: result.recordset || [],
+            columnOrder,
             rowsAffected: result.rowsAffected || [],
             originalSQL: sqlQuery,
             transformedSQL: sqlToExecute,
