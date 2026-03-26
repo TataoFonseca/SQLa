@@ -3,6 +3,7 @@ import { validateQuery } from "../services/queryValidator.js";
 import { executeSQL } from "../services/sqlExecutor.service.js";
 import { validateSession, updateLastUsed } from "../services/session.service.js";
 import { saveQuery, getQueriesBySession, getQueriesForExport } from "../services/project.service.js";
+import { getOrGenerateGlobalDiagram } from "../services/diagram.service.js"; //NUEVO: importa la función diagram.service.js
 
 export async function analyzeSQL(req, res) {
     try {
@@ -123,5 +124,19 @@ export async function exportSQL(req, res) {
     } catch (err) {
         console.error("ERROR en exportSQL:", err);
         res.status(500).json({ ok: false, error: err.message });
+    }
+}
+// NUEVO: Función que obtiene el diagrama ERD global
+export async function sendGlobalDiagram(req, res) {
+    try {
+        const diagram = getOrGenerateGlobalDiagram();
+        return res.json({ ok: true, diagram });
+    } catch (err) {
+        console.error("[sendGlobalDiagram] Error generando diagrama:", err);
+        return res.status(500).json({
+            ok: false,
+            error: "No se pudo generar el diagrama ERD. Verifica que el script SQL existe en la ruta configurada.",
+            detail: err.message
+        });
     }
 }

@@ -499,6 +499,44 @@ export const AppController = {
       }, 200);
     }
 
+
+    // Detectar qué categoría del toolbox activó el usuario y sincronizar la pestaña del panel ERD + abrirlo si estaba cerrado.
+    setTimeout(() => {
+      const toolboxEl = this.workspace.getToolbox();
+      const toolboxDom = toolboxEl?.HtmlDiv || toolboxEl?.getDiv?.();
+      if (!toolboxDom) return;
+
+      toolboxDom.addEventListener('click', async (e) => {
+        const categoryRow = e.target.closest('.blocklyTreeRow, .blocklyToolboxCategory');
+        if (!categoryRow) return;
+
+        // Leer el texto del label de la categoría clickeada
+        const labelEl = categoryRow.querySelector(
+          '.blocklyTreeLabel, .blocklyToolboxCategoryLabel'
+        );
+        const label = labelEl?.textContent?.trim() || '';
+
+        const isDDL = label.toLowerCase().includes('crear');
+        const isDML = label.toLowerCase().includes('consultar');
+
+        if (!isDDL && !isDML) return;
+
+        const tab = isDDL ? 'ddl' : 'dml';
+        AppController._activeErdTab = tab;
+
+        // Abrir el panel si estaba cerrado
+        const mermaidDiv = document.getElementById('mermaidDiv');
+        if (mermaidDiv && mermaidDiv.style.display === 'none') {
+          mermaidDiv.style.display = 'block';
+          AppController.resizeBlockly();
+        }
+
+        // Renderizar el contenido de la pestaña correspondiente
+        await AppController.openErdPanel(tab);
+      });
+    }, 300);
+
+
     // Fondo transparente en Blockly
     setTimeout(() => {
       const blocklyBackground = document.querySelector('.blocklyMainBackground');
@@ -528,18 +566,36 @@ export const AppController = {
       const code = javascriptGenerator.workspaceToCode(this.workspace);
       console.log('SQL generado:', code);
 
-      // ERD en tiempo real desde bloques CREATE TABLE
+      // // ERD en tiempo real desde bloques CREATE TABLE
+      // clearTimeout(this._mermaidDebounceTimer);
+      // this._mermaidDebounceTimer = setTimeout(() => {
+      //   this.updateMermaidFromWorkspace();
+      // }, 400);
+
+      // Actualizar panel ERD en tiempo real, solo si está visible y en pestaña DDL
       clearTimeout(this._mermaidDebounceTimer);
       this._mermaidDebounceTimer = setTimeout(() => {
-        this.updateMermaidFromWorkspace();
+        const mermaidDiv = document.getElementById('mermaidDiv');
+        const panelOpen = mermaidDiv && mermaidDiv.style.display !== 'none';
+        const onDDLTab = AppController._activeErdTab === 'ddl';
+        if (panelOpen && onDDLTab) {
+          AppController.openErdPanel('ddl');
+        }
       }, 400);
 
     });
 
     // === EVENTOS DE INTERFAZ ===
-    showMermaidBtn?.addEventListener('click', () => {
-      mermaidDiv.style.display =
-        mermaidDiv.style.display === 'none' ? 'block' : 'none';
+    showMermaidBtn?.addEventListener('click', async () => { //async añadido para que funcione el await y el openErdPanel
+      // mermaidDiv.style.display =
+      //   mermaidDiv.style.display === 'none' ? 'block' : 'none';
+      const isHidden = mermaidDiv.style.display === 'none';
+      if (isHidden) {
+        mermaidDiv.style.display = 'block';
+        await AppController.openErdPanel(AppController._activeErdTab);
+      } else {
+        mermaidDiv.style.display = 'none';
+      }
       this.resizeBlockly();
     });
 
@@ -1321,5 +1377,191 @@ export const AppController = {
 -- 💡 Tip: Usa el botón "Ejecutar" para enviar la query al servidor
       </pre>
     `;
-  }
+  },
+  // ── Estado de la pestaña activa ─────────────────────────────────────────
+  // 'ddl' = Crear tabla  |  'dml' = Consultar BD
+  _activeErdTab: 'ddl',
+
+  // ── Caché del diagrama global (BD precargada) ───────────────────────────
+  _cachedGlobalDiagram: null,
+
+  // ───────────────────────────────────────────────────────────────────────
+  // Pide el diagrama Mermaid de la BD global al backend.
+  // Solo hace fetch una vez; las llamadas siguientes usan la caché.
+  // ───────────────────────────────────────────────────────────────────────
+  loadGlobalDiagram: async function () {
+    if (this._cachedGlobalDiagram) return this._cachedGlobalDiagram;
+    try {
+      const res = await fetch('http://localhost:3000/api/sql/global-diagram');
+      const data = await res.json();
+      if (data.ok && data.diagram) {
+        this._cachedGlobalDiagram = data.diagram;
+        return data.diagram;
+      }
+    } catch (err) {
+      console.error('[AppController] Error cargando diagrama global:', err);
+    }
+    return null;
+  },
+
+  // ───────────────────────────────────────────────────────────────────────
+  // Renderiza el panel mermaidDiv completo:
+  //   - Barra de pestañas (DDL / DML)
+  //   - Contenido según la pestaña activa
+  // Llamado desde: showMermaidBtn click, toolbox category click,
+  //                workspace change listener (solo si panel ya abierto y tab = 'ddl')
+  // ───────────────────────────────────────────────────────────────────────
+  openErdPanel: async function (tab) {
+    this._activeErdTab = tab || this._activeErdTab;
+    const mermaidDiv = document.getElementById('mermaidDiv');
+    if (!mermaidDiv) return;
+
+    // ── Colores de las pestañas (glass, baja saturación) ─────────────────
+    const DDL_ACTIVE_BG = 'rgba(100, 80, 200, 0.18)';
+    const DDL_ACTIVE_BORD = 'rgba(130, 105, 230, 0.75)';
+    const DDL_ACTIVE_TEXT = 'rgba(190, 175, 255, 0.95)';
+    const DML_ACTIVE_BG = 'rgba(25, 90, 60, 0.18)';
+    const DML_ACTIVE_BORD = 'rgba(50, 160, 100, 0.7)';
+    const DML_ACTIVE_TEXT = 'rgba(100, 200, 145, 0.95)';
+    const INACTIVE_TEXT = 'rgba(255, 255, 255, 0.3)';
+
+    const isDDL = this._activeErdTab === 'ddl';
+
+    // ── Barra de pestañas ─────────────────────────────────────────────────
+    const tabBar = `
+      <div style="
+        display: flex;
+        border-bottom: 1px solid rgba(255,255,255,0.07);
+        margin-bottom: 14px;
+      ">
+        <button id="erdTabDDL" style="
+          flex: 1;
+          padding: 9px 10px;
+          background: ${isDDL ? DDL_ACTIVE_BG : 'transparent'};
+          border: none;
+          border-bottom: 2px solid ${isDDL ? DDL_ACTIVE_BORD : 'transparent'};
+          color: ${isDDL ? DDL_ACTIVE_TEXT : INACTIVE_TEXT};
+          font-size: 12px;
+          font-weight: ${isDDL ? '500' : '400'};
+          cursor: pointer;
+          letter-spacing: 0.02em;
+          transition: color 0.15s;
+        ">📋 Crear tabla</button>
+        <button id="erdTabDML" style="
+          flex: 1;
+          padding: 9px 10px;
+          background: ${!isDDL ? DML_ACTIVE_BG : 'transparent'};
+          border: none;
+          border-bottom: 2px solid ${!isDDL ? DML_ACTIVE_BORD : 'transparent'};
+          color: ${!isDDL ? DML_ACTIVE_TEXT : INACTIVE_TEXT};
+          font-size: 12px;
+          font-weight: ${!isDDL ? '500' : '400'};
+          cursor: pointer;
+          letter-spacing: 0.02em;
+          transition: color 0.15s;
+        ">🔍 Consultar BD</button>
+      </div>
+    `;
+
+    // ── Contenido según pestaña ───────────────────────────────────────────
+    let contentHTML = '';
+
+    if (isDDL) {
+      // Pestaña DDL: tarjetas del workspace (lógica ya existente)
+      const tables = this.extractTablesFromWorkspace();
+      if (tables.length === 0) {
+        contentHTML = `
+          <p style="
+            color: rgba(255,255,255,0.3);
+            font-size: 0.85rem;
+            text-align: center;
+            padding: 24px 0;
+            font-style: italic;
+          ">Agrega un bloque CREATE TABLE para ver el diagrama.</p>
+        `;
+      } else {
+        contentHTML = `
+          <div style="
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            align-items: flex-start;
+          ">
+            ${tables.map(t => this.renderTableCard(t)).join('')}
+          </div>
+        `;
+      }
+    } else {
+      // Pestaña DML: diagrama Mermaid de la BD precargada
+      contentHTML = `
+        <p style="color: rgba(255,255,255,0.35); font-size: 0.82rem; padding: 8px 0 4px;">
+          ⏳ Cargando diagrama de Chinook...
+        </p>
+      `;
+    }
+
+    // ── Inyectar estructura en el DOM ─────────────────────────────────────
+    mermaidDiv.innerHTML = `
+      <h2>Diagrama ERD</h2>
+      ${tabBar}
+      <div id="erdPanelContent">
+        ${contentHTML}
+      </div>
+    `;
+
+    // ── Bind de las pestañas ──────────────────────────────────────────────
+    document.getElementById('erdTabDDL')?.addEventListener('click', () => {
+      AppController.openErdPanel('ddl');
+    });
+    document.getElementById('erdTabDML')?.addEventListener('click', () => {
+      AppController.openErdPanel('dml');
+    });
+
+    // ── Si es DML, cargar el diagrama Mermaid async ───────────────────────
+    if (!isDDL) {
+      const globalDiagram = await this.loadGlobalDiagram();
+      const contentEl = document.getElementById('erdPanelContent');
+      if (!contentEl) return;
+
+      if (!globalDiagram) {
+        contentEl.innerHTML = `
+          <p style="color: rgba(255,100,100,0.7); font-size: 0.85rem; padding: 8px 0;">
+            No se pudo cargar el diagrama. Verifica que el backend está activo.
+          </p>
+        `;
+        return;
+      }
+
+      try {
+        const renderId = 'mermaid-chinook-' + Date.now();
+        const { svg } = await mermaid.render(renderId, globalDiagram);
+        contentEl.innerHTML = `
+          <div style="
+            font-size: 11px;
+            color: rgba(255,255,255,0.3);
+            text-transform: uppercase;
+            letter-spacing: 0.07em;
+            margin-bottom: 10px;
+          ">Base de datos — Chinook</div>
+          <div style="overflow-x: auto;">${svg}</div>
+        `;
+      } catch (err) {
+        console.error('[openErdPanel] Error renderizando Mermaid:', err);
+        document.getElementById('erdPanelContent').innerHTML = `
+          <pre style="color: rgba(255,80,80,0.8); font-size: 0.78rem;">
+Error al renderizar el diagrama.\n${err.message}</pre>
+          <details style="margin-top: 8px;">
+            <summary style="color: rgba(255,255,255,0.3); font-size: 0.78rem; cursor: pointer;">
+              Ver código Mermaid
+            </summary>
+            <pre style="color: rgba(255,255,255,0.3); font-size: 0.75rem; margin-top: 6px;">
+${globalDiagram}</pre>
+          </details>
+        `;
+      }
+    }
+  },
+
+
+
 };

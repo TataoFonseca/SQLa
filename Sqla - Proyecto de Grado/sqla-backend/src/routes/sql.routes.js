@@ -1,5 +1,8 @@
 import { Router } from "express";
-import { analyzeSQL, listQueries, exportSQL } from "../controllers/sql.controller.js";
+import {
+    analyzeSQL, listQueries, exportSQL,
+    sendGlobalDiagram // NUEVO: Para obtener el diagrama ERD global
+} from "../controllers/sql.controller.js";
 import { createSession, validateSession } from "../services/session.service.js";
 
 const router = Router();
@@ -39,5 +42,11 @@ router.get("/history/:sessionId", listQueries);
 
 // Exportar SQL de la sesión
 router.get("/export-sql/:sessionId", exportSQL);
+
+// ── Diagrama ERD global (usando el script SQL de la BD precargada)
+// GET /api/sql/global-diagram
+// Retorna: { ok: true, diagram: "erDiagram\n  Album { ... }\n ..." }
+router.get("/global-diagram", sendGlobalDiagram);
+
 
 export default router;
