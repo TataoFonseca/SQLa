@@ -93,11 +93,9 @@ function parseSqlScript(sqlContent) {
       // Dividir por coma respetando paréntesis anidados (para tipos como NUMERIC(10,2))
       // const lines = splitByComma(body);
 
-      for (const line of lines) {
+      for (const line of splitByComma(stmt.slice(bodyStart + 1, bodyEnd))) {
         const trimmed = line.trim();
         if (!trimmed) continue;
-
-        const upper2 = trimmed.toUpperCase();
 
         // Ignorar constraints inline (PRIMARY KEY constraint, UNIQUE...)
         if (/^CONSTRAINT\s+/i.test(trimmed)) {
