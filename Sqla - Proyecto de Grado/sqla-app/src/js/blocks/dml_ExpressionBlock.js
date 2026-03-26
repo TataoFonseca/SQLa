@@ -15,7 +15,7 @@ export function expressionBlockDefinition(Blockly) {
       this.setInputsInline(false);
       this.setOutput(true, ["Expression", "Column"]);
       this.setColour(160);
-      this.setTooltip('Nombre de columna. Click derecho para agregar DISTINCT o TOP');
+      this.setTooltip('Nombre de columna o expresión');
       this.setHelpUrl('');
       // Blockly.Extensions.apply('expression_context_menu', this, false); //Extension del menu contextual para agregar DISTINCT o TOP
       Blockly.Extensions.apply('order_by_expression_extension', this, false); //Extension para poder insertarse dentro del bloque ORDER BY
@@ -28,7 +28,7 @@ export const EXPRESSION_GENERATOR = function (block, generator) {
   const direction = block.getFieldValue('DIRECTION'); //Agregado, este "DIRECTION" lo aporta la extensión orderByExpressionExtension y solo se mostrará si el bloque está conectado a un con sql_order_by
   const next = generator.valueToCode(block, 'NEXT', generator.ORDER_ATOMIC); // Este "NEXT" lo aporta la extensión expressionContextMenu y solo mostrará las opciones DISTINCT o TOP si el bloque está conectado o es adyacente a un bloque sql_select
   // const code = next ? column + ', ' + next : column;
-  const self = direction ? `${column} ${direction}` : column; 
+  const self = direction ? `${column} ${direction}` : column;
   const code = next ? `${self}, ${next}` : self;
   return [code, generator.ORDER_ATOMIC];
 };
