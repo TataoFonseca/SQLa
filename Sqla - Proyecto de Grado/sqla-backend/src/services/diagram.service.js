@@ -57,6 +57,7 @@ function parseSqlScript(sqlContent) {
 
   // ── 1. Limpiar comentarios de línea y normalizar saltos ───────────────────
   const cleaned = sqlContent
+    .replace(/\/\*[\s\S]*?\*\//g, "") // quitar comentarios de bloque: /* ... */
     .replace(/--[^\n]*/g, "")        // quitar comentarios --
     .replace(/\r\n/g, "\n")
     .replace(/\r/g, "\n");
@@ -240,6 +241,9 @@ export function getOrGenerateGlobalDiagram() {
 
   const sqlContent = readFileSync(SQL_SCRIPT_PATH, "utf-8");
   const parsed = parseSqlScript(sqlContent);
+
+  console.log('[diagram.service] Tablas encontradas:', Object.keys(parsed.tables));
+
   cachedGlobalDiagram = buildMermaidString(parsed);
 
   console.log(
