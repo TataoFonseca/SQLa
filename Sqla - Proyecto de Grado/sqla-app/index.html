@@ -13,6 +13,9 @@
 </head>
 
 <body>
+  <video autoplay muted playsinline preload="auto" id="bgVideo">
+    <source src="../assets/img/BackGroundFinal.mp4" type="video/mp4">
+  </video>
   <div class="container">
     <div class="overlay">
       <div class="logo">
@@ -112,6 +115,50 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
 
   <script type="module">
+
+    const video = document.getElementById('bgVideo');
+
+    if (video) {
+      // Añadimos una transición por CSS de 0.6 segundos para el filtro de brillo
+      video.style.transition = 'filter 0.6s ease-in-out';
+      let isFadingOut = false;
+
+      function loopCheck() {
+        if (!video.duration) {
+          requestAnimationFrame(loopCheck);
+          return;
+        }
+
+        const timeLeft = video.duration - video.currentTime;
+
+        // 1. Cuando falten 0.7 segundos para terminar, bajamos el brillo a 0 (negro)
+        if (timeLeft <= 0.7 && !isFadingOut) {
+          isFadingOut = true;
+          video.style.filter = 'brightness(0)';
+        }
+
+        // 2. Cuando falten 0.1 segundos (y ya esté totalmente oscuro), reiniciamos
+        if (timeLeft <= 0.1) {
+          video.currentTime = 0.01;
+          video.play().catch(e => console.log(e));
+          // Volvemos el brillo a la normalidad para que haga "fade-in" desde negro
+          video.style.filter = 'brightness(1)';
+          isFadingOut = false;
+        }
+
+        requestAnimationFrame(loopCheck);
+      }
+      requestAnimationFrame(loopCheck);
+
+      // Fallback con ended por si falla algo
+      video.addEventListener('ended', () => {
+        video.currentTime = 0.01;
+        video.style.filter = 'brightness(1)';
+        video.play().catch(e => console.log(e));
+        isFadingOut = false;
+      });
+    }
+
     import { loadPartials } from '/src/js/utils/loadPartials.js';
     import { apiService } from '/src/js/services/apiService.js';
 
@@ -168,7 +215,7 @@
             pendingSessionReady = true;
             newSessionPreview.textContent = data.sessionId;
             newSessionPreview.title = `Schema: ${data.schemaName}`;
-            showFeedback(`✅ Sesión creada. Schema: ${data.schemaName}`, 'success');
+            showFeedback(`Sesión creada. Schema: ${data.schemaName}`, 'success');
           } else {
             newSessionPreview.textContent = '—';
             showFeedback('Error al crear la sesión: ' + (data.error || 'error desconocido'));

@@ -228,3 +228,25 @@ button:hover {
   font-size: 0.85rem;
   margin-top: 6px;
 }
+
+#bgVideo {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: -1;
+
+  /* reduce parpadeo */
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* Opcional: oscurecer el video para que el texto se vea mejor */
+.overlay {
+  background: rgba(0, 0, 0, 0.5);
+  /* oscurece */
+  padding: 40px;
+  border-radius: 10px;
+}
