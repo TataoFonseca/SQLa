@@ -103,6 +103,8 @@ export const AppController = {
   workspace: null,
   _mermaidDebounceTimer: null,
   _activeErdTab: 'ddl',
+  _cytoscapeInstance: null,
+  _cardEls: null,
 
   init: function () {
 
@@ -551,10 +553,16 @@ export const AppController = {
       const code = javascriptGenerator.workspaceToCode(this.workspace);
       console.log('SQL generado:', code);
 
-      // ERD en tiempo real desde bloques CREATE TABLE
       clearTimeout(this._mermaidDebounceTimer);
       this._mermaidDebounceTimer = setTimeout(() => {
         this.updateMermaidFromWorkspace();
+
+        // Highlight reactivo en tab DML
+        if (this._activeErdTab === 'dml' && this._cytoscapeInstance) {
+          const matches = [...code.matchAll(/\b(?:FROM|JOIN)\s+\[?([\w.]+)\]?/gi)];
+          const tableNames = matches.map(m => m[1].split('.').pop());
+          this.highlightTables(tableNames);
+        }
       }, 400);
 
     });
@@ -572,6 +580,23 @@ export const AppController = {
 
     document.getElementById('erdTabDML')?.addEventListener('click', () => {
       this.switchErdTab('dml');
+    });
+
+    // === Controles de zoom del panel ERD (Cytoscape) ===
+    document.getElementById('erdZoomIn')?.addEventListener('click', () => {
+      if (!this._cytoscapeInstance) return;
+      const cy = this._cytoscapeInstance;
+      cy.zoom({ level: cy.zoom() * 1.25, renderedPosition: { x: cy.width() / 2, y: cy.height() / 2 } });
+    });
+
+    document.getElementById('erdZoomOut')?.addEventListener('click', () => {
+      if (!this._cytoscapeInstance) return;
+      const cy = this._cytoscapeInstance;
+      cy.zoom({ level: cy.zoom() / 1.25, renderedPosition: { x: cy.width() / 2, y: cy.height() / 2 } });
+    });
+
+    document.getElementById('erdFit')?.addEventListener('click', () => {
+      if (this._cytoscapeInstance) this._cytoscapeInstance.fit(40);
     });
 
     showOutputBtn?.addEventListener('click', () => {
@@ -1047,11 +1072,14 @@ export const AppController = {
       fontWeight:   '400'
     };
 
+    const zoomControls = document.getElementById('erdZoomControls');
+
     if (tab === 'ddl') {
       Object.assign(btnDDL.style, activeStyle);
       Object.assign(btnDML.style, inactiveStyle);
       panelDDL.style.display = 'block';
       panelDML.style.display = 'none';
+      if (zoomControls) zoomControls.style.display = 'none';
       // Re-renderizar el workspace si hay tablas definidas
       this.updateMermaidFromWorkspace();
     } else {
@@ -1059,119 +1087,317 @@ export const AppController = {
       Object.assign(btnDDL.style, inactiveStyle);
       panelDML.style.display = 'block';
       panelDDL.style.display = 'none';
+      if (zoomControls) zoomControls.style.display = 'flex';
       this.renderChinookERD();
     }
   },
 
   // ============================================================
-  // MÉTODO: renderizar el ERD estático de Chinook DB
+  // MÉTODO: renderizar el ERD de Chinook con Cytoscape.js
+  // ── Overlay HTML manual (sin plugins externos) ──────────────
   // ============================================================
-  renderChinookERD: async function () {
+  renderChinookERD: function () {
     const panel = document.getElementById('erdPanelDML');
     if (!panel) return;
 
-    // Evitar re-renderizar si ya está listo
-    if (panel.dataset.rendered === 'true') return;
+    if (panel.dataset.rendered === 'true' && this._cytoscapeInstance) return;
 
-    panel.innerHTML = `<p style="color:rgba(255,255,255,0.4); font-size:0.85rem; margin:8px 0;">Cargando ERD de Chinook...</p>`;
-
-    const diagram = `erDiagram
-  Artist {
-    int ArtistId PK
-    string Name
-  }
-  Album {
-    int AlbumId PK
-    string Title
-    int ArtistId FK
-  }
-  Customer {
-    int CustomerId PK
-    string FirstName
-    string LastName
-    string Company
-    string Email
-    string Phone
-    int SupportRepId FK
-  }
-  Employee {
-    int EmployeeId PK
-    string LastName
-    string FirstName
-    string Title
-    int ReportsTo FK
-    datetime BirthDate
-    datetime HireDate
-    string Email
-  }
-  Genre {
-    int GenreId PK
-    string Name
-  }
-  Invoice {
-    int InvoiceId PK
-    int CustomerId FK
-    datetime InvoiceDate
-    string BillingAddress
-    string BillingCity
-    string BillingCountry
-    float Total
-  }
-  InvoiceLine {
-    int InvoiceLineId PK
-    int InvoiceId FK
-    int TrackId FK
-    float UnitPrice
-    int Quantity
-  }
-  MediaType {
-    int MediaTypeId PK
-    string Name
-  }
-  Playlist {
-    int PlaylistId PK
-    string Name
-  }
-  PlaylistTrack {
-    int PlaylistId FK
-    int TrackId FK
-  }
-  Track {
-    int TrackId PK
-    string Name
-    int AlbumId FK
-    int MediaTypeId FK
-    int GenreId FK
-    string Composer
-    int Milliseconds
-    int Bytes
-    float UnitPrice
-  }
-  Artist ||--o{ Album : "ArtistId"
-  Employee ||--o{ Customer : "SupportRepId"
-  Employee ||--o| Employee : "ReportsTo"
-  Customer ||--o{ Invoice : "CustomerId"
-  Invoice ||--o{ InvoiceLine : "InvoiceId"
-  Track ||--o{ InvoiceLine : "TrackId"
-  Playlist ||--o{ PlaylistTrack : "PlaylistId"
-  Track ||--o{ PlaylistTrack : "TrackId"
-  Album ||--o{ Track : "AlbumId"
-  MediaType ||--o{ Track : "MediaTypeId"
-  Genre ||--o{ Track : "GenreId"`;
-
-    panel.innerHTML = `<div id="chinookDiagram"></div>`;
-
-    try {
-      const renderId = 'chinook-' + Date.now();
-      const { svg } = await mermaid.render(renderId, diagram);
-      document.getElementById('chinookDiagram').innerHTML = svg;
-      panel.dataset.rendered = 'true';
-    } catch (err) {
-      console.error('Error renderizando ERD Chinook:', err);
-      panel.innerHTML = `
-        <pre style="color:#ff5555; font-size:0.8rem;">Error al renderizar el diagrama Chinook.\n${err.message}</pre>
-      `;
+    if (typeof cytoscape === 'undefined') {
+      panel.innerHTML = `<p style="color:#ff5555; font-size:0.85rem; padding:12px;">Error: Cytoscape no está disponible.</p>`;
+      return;
     }
+
+    // Contenedor: canvas Cytoscape + overlay HTML superpuesto
+    panel.innerHTML = `
+      <div id="cyWrapper" style="position:relative; width:100%; height:520px; border-radius:8px; overflow:hidden; background:rgba(10,10,22,0.6);">
+        <div id="cyCanvas"  style="width:100%; height:100%;"></div>
+        <div id="cyOverlay" style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; overflow:hidden;"></div>
+      </div>
+    `;
+
+    // ── Constantes de dimensión ───────────────────────────────
+    const NODE_W = 200;
+    const HDR_H  = 32;
+    const ROW_H  = 22;
+
+    // ── Definición de tablas Chinook ──────────────────────────
+    const tables = [
+      { id: 'Artist', cols: [
+        { name: 'ArtistId', type: 'INT',           pk: true  },
+        { name: 'Name',     type: 'NVARCHAR(120)',  pk: false },
+      ]},
+      { id: 'Album', cols: [
+        { name: 'AlbumId',  type: 'INT',           pk: true                },
+        { name: 'Title',    type: 'NVARCHAR(160)',  pk: false               },
+        { name: 'ArtistId', type: 'INT',           pk: false, fk: 'Artist' },
+      ]},
+      { id: 'Track', cols: [
+        { name: 'TrackId',      type: 'INT',           pk: true                    },
+        { name: 'Name',         type: 'NVARCHAR(200)',  pk: false                   },
+        { name: 'AlbumId',      type: 'INT',           pk: false, fk: 'Album'      },
+        { name: 'MediaTypeId',  type: 'INT',           pk: false, fk: 'MediaType'  },
+        { name: 'GenreId',      type: 'INT',           pk: false, fk: 'Genre'      },
+        { name: 'Composer',     type: 'NVARCHAR(220)',  pk: false                   },
+        { name: 'Milliseconds', type: 'INT',            pk: false                   },
+        { name: 'Bytes',        type: 'INT',            pk: false                   },
+        { name: 'UnitPrice',    type: 'NUMERIC(10,2)',  pk: false                   },
+      ]},
+      { id: 'MediaType', cols: [
+        { name: 'MediaTypeId', type: 'INT',           pk: true  },
+        { name: 'Name',        type: 'NVARCHAR(120)',  pk: false },
+      ]},
+      { id: 'Genre', cols: [
+        { name: 'GenreId', type: 'INT',           pk: true  },
+        { name: 'Name',    type: 'NVARCHAR(120)',  pk: false },
+      ]},
+      { id: 'Playlist', cols: [
+        { name: 'PlaylistId', type: 'INT',           pk: true  },
+        { name: 'Name',       type: 'NVARCHAR(120)',  pk: false },
+      ]},
+      { id: 'PlaylistTrack', cols: [
+        { name: 'PlaylistId', type: 'INT', pk: false, fk: 'Playlist' },
+        { name: 'TrackId',    type: 'INT', pk: false, fk: 'Track'    },
+      ]},
+      { id: 'Customer', cols: [
+        { name: 'CustomerId',   type: 'INT',           pk: true                  },
+        { name: 'FirstName',    type: 'NVARCHAR(40)',   pk: false                 },
+        { name: 'LastName',     type: 'NVARCHAR(20)',   pk: false                 },
+        { name: 'Company',      type: 'NVARCHAR(80)',   pk: false                 },
+        { name: 'Address',      type: 'NVARCHAR(70)',   pk: false                 },
+        { name: 'City',         type: 'NVARCHAR(40)',   pk: false                 },
+        { name: 'State',        type: 'NVARCHAR(40)',   pk: false                 },
+        { name: 'Country',      type: 'NVARCHAR(40)',   pk: false                 },
+        { name: 'PostalCode',   type: 'NVARCHAR(10)',   pk: false                 },
+        { name: 'Phone',        type: 'NVARCHAR(24)',   pk: false                 },
+        { name: 'Fax',          type: 'NVARCHAR(24)',   pk: false                 },
+        { name: 'Email',        type: 'NVARCHAR(60)',   pk: false                 },
+        { name: 'SupportRepId', type: 'INT',            pk: false, fk: 'Employee' },
+      ]},
+      { id: 'Employee', cols: [
+        { name: 'EmployeeId', type: 'INT',           pk: true                  },
+        { name: 'LastName',   type: 'NVARCHAR(20)',   pk: false                 },
+        { name: 'FirstName',  type: 'NVARCHAR(20)',   pk: false                 },
+        { name: 'Title',      type: 'NVARCHAR(30)',   pk: false                 },
+        { name: 'ReportsTo',  type: 'INT',            pk: false, fk: 'Employee' },
+        { name: 'BirthDate',  type: 'DATETIME',       pk: false                 },
+        { name: 'HireDate',   type: 'DATETIME',       pk: false                 },
+        { name: 'Address',    type: 'NVARCHAR(70)',   pk: false                 },
+        { name: 'City',       type: 'NVARCHAR(40)',   pk: false                 },
+        { name: 'State',      type: 'NVARCHAR(40)',   pk: false                 },
+        { name: 'Country',    type: 'NVARCHAR(40)',   pk: false                 },
+        { name: 'PostalCode', type: 'NVARCHAR(10)',   pk: false                 },
+        { name: 'Phone',      type: 'NVARCHAR(24)',   pk: false                 },
+        { name: 'Fax',        type: 'NVARCHAR(24)',   pk: false                 },
+        { name: 'Email',      type: 'NVARCHAR(60)',   pk: false                 },
+      ]},
+      { id: 'Invoice', cols: [
+        { name: 'InvoiceId',         type: 'INT',           pk: true                  },
+        { name: 'CustomerId',        type: 'INT',           pk: false, fk: 'Customer' },
+        { name: 'InvoiceDate',       type: 'DATETIME',      pk: false                 },
+        { name: 'BillingAddress',    type: 'NVARCHAR(70)',  pk: false                 },
+        { name: 'BillingCity',       type: 'NVARCHAR(40)',  pk: false                 },
+        { name: 'BillingState',      type: 'NVARCHAR(40)',  pk: false                 },
+        { name: 'BillingCountry',    type: 'NVARCHAR(40)',  pk: false                 },
+        { name: 'BillingPostalCode', type: 'NVARCHAR(10)',  pk: false                 },
+        { name: 'Total',             type: 'NUMERIC(10,2)', pk: false                 },
+      ]},
+      { id: 'InvoiceLine', cols: [
+        { name: 'InvoiceLineId', type: 'INT',           pk: true                 },
+        { name: 'InvoiceId',     type: 'INT',           pk: false, fk: 'Invoice' },
+        { name: 'TrackId',       type: 'INT',           pk: false, fk: 'Track'   },
+        { name: 'UnitPrice',     type: 'NUMERIC(10,2)', pk: false                },
+        { name: 'Quantity',      type: 'INT',           pk: false                },
+      ]},
+    ];
+
+    const fkEdges = [
+      { source: 'Album',        target: 'Artist',    label: 'ArtistId'     },
+      { source: 'Track',        target: 'Album',     label: 'AlbumId'      },
+      { source: 'Track',        target: 'MediaType', label: 'MediaTypeId'  },
+      { source: 'Track',        target: 'Genre',     label: 'GenreId'      },
+      { source: 'Customer',     target: 'Employee',  label: 'SupportRepId' },
+      { source: 'Employee',     target: 'Employee',  label: 'ReportsTo'    },
+      { source: 'Invoice',      target: 'Customer',  label: 'CustomerId'   },
+      { source: 'InvoiceLine',  target: 'Invoice',   label: 'InvoiceId'    },
+      { source: 'InvoiceLine',  target: 'Track',     label: 'TrackId'      },
+      { source: 'PlaylistTrack',target: 'Playlist',  label: 'PlaylistId'   },
+      { source: 'PlaylistTrack',target: 'Track',     label: 'TrackId'      },
+    ];
+
+    // ── Función para construir HTML de una tarjeta ────────────
+    const buildCardHTML = (tableId, cols) => {
+      const rows = cols.map(col => {
+        const icon  = col.pk ? '🔑' : col.fk ? '🔗' : '○';
+        const color = col.pk ? '#f5c542' : col.fk ? '#4fc3f7' : 'rgba(255,255,255,0.82)';
+        return `<div style="
+          height:${ROW_H}px; box-sizing:border-box; padding:0 8px;
+          border-top:1px solid rgba(255,255,255,0.06);
+          display:flex; align-items:center; gap:5px;
+          font-family:'Fira Code',monospace; font-size:11px;
+        ">
+          <span style="font-size:10px;">${icon}</span>
+          <span style="color:${color}; flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${col.name}</span>
+          <span style="color:rgba(255,255,255,0.27); font-size:10px; white-space:nowrap;">${col.type}</span>
+        </div>`;
+      }).join('');
+
+      return `
+        <div class="cy-card-header" style="
+          height:${HDR_H}px; box-sizing:border-box;
+          background:rgba(80,60,180,0.85);
+          display:flex; align-items:center; padding:0 10px;
+          color:#fff; font-weight:600; font-size:13px;
+          font-family:'Fira Code',monospace; letter-spacing:0.02em;
+        ">${tableId}</div>
+        ${rows}
+      `;
+    };
+
+    // ── Elementos para Cytoscape (solo layout + aristas) ──────
+    const elements = [
+      ...tables.map(t => ({
+        data: {
+          id:     t.id,
+          width:  NODE_W,
+          height: HDR_H + t.cols.length * ROW_H,
+        }
+      })),
+      ...fkEdges.map((e, i) => ({
+        data: { id: `e${i}`, source: e.source, target: e.target, label: e.label }
+      }))
+    ];
+
+    // ── Instancia Cytoscape ───────────────────────────────────
+    const cy = cytoscape({
+      container: document.getElementById('cyCanvas'),
+      elements,
+      style: [
+        {
+          selector: 'node',
+          style: {
+            'background-opacity': 0,
+            'border-opacity':     0,
+            'width':  'data(width)',
+            'height': 'data(height)',
+            'label':  '',
+          }
+        },
+        {
+          selector: 'edge',
+          style: {
+            'width':                     1.5,
+            'line-color':                'rgba(120,100,255,0.45)',
+            'target-arrow-color':        'rgba(140,120,255,0.65)',
+            'target-arrow-shape':        'triangle',
+            'curve-style':               'bezier',
+            'label':                     'data(label)',
+            'font-size':                 '9px',
+            'color':                     'rgba(200,200,255,0.5)',
+            'text-background-color':     'rgba(10,10,28,0.92)',
+            'text-background-opacity':   1,
+            'text-background-padding':   '2px',
+            'font-family':               'Fira Code, monospace',
+          }
+        },
+        {
+          selector: 'edge:loop',
+          style: {
+            'curve-style':              'bezier',
+            'loop-direction':           '-45deg',
+            'loop-sweep':               '40deg',
+            'control-point-distance':   80,
+          }
+        }
+      ],
+      layout: {
+        name:            'cose',
+        animate:         false,
+        fit:             true,
+        padding:         60,
+        randomize:       true,
+        nodeRepulsion:   function () { return 14000; },
+        idealEdgeLength: function () { return 180;   },
+        edgeElasticity:  function () { return 100;   },
+        gravity:         80,
+        numIter:         1200,
+        componentSpacing:80,
+      },
+      userZoomingEnabled: true,
+      userPanningEnabled: true,
+      minZoom: 0.08,
+      maxZoom: 4,
+    });
+
+    // ── Overlay HTML: tarjetas de tabla ───────────────────────
+    const overlay  = document.getElementById('cyOverlay');
+    const cardEls  = {};
+
+    tables.forEach(t => {
+      const nodeH = HDR_H + t.cols.length * ROW_H;
+      const wrapper = document.createElement('div');
+      wrapper.style.cssText = `
+        position:absolute; transform-origin:top left; pointer-events:none;
+        width:${NODE_W}px;
+        background:rgba(14,14,32,0.97);
+        border:1.5px solid rgba(120,100,255,0.55); border-radius:8px;
+        overflow:hidden; box-shadow:0 4px 20px rgba(0,0,0,0.6);
+      `;
+      wrapper.innerHTML = buildCardHTML(t.id, t.cols);
+      overlay.appendChild(wrapper);
+      cardEls[t.id] = wrapper;
+    });
+
+    // Actualiza posición y escala de cada tarjeta según el viewport
+    const updatePositions = () => {
+      const zoom = cy.zoom();
+      cy.nodes().forEach(node => {
+        const el = cardEls[node.id()];
+        if (!el) return;
+        const pos = node.renderedPosition();
+        const w   = node.data('width')  * zoom;
+        const h   = node.data('height') * zoom;
+        el.style.left      = `${pos.x - w / 2}px`;
+        el.style.top       = `${pos.y - h / 2}px`;
+        el.style.transform = `scale(${zoom})`;
+      });
+    };
+
+    cy.on('viewport layoutstop', updatePositions);
+    cy.on('drag', 'node', updatePositions);
+    // Primera posición tras layout
+    cy.one('layoutstop', updatePositions);
+
+    this._cytoscapeInstance = cy;
+    this._cardEls            = cardEls;
+    panel.dataset.rendered   = 'true';
+  },
+
+  // ============================================================
+  // MÉTODO: resaltar tablas activas en el ERD de Cytoscape
+  // ── Actualiza estilos del overlay HTML directamente ─────────
+  // ============================================================
+  highlightTables: function (tableNames) {
+    if (!this._cardEls) return;
+    const hasFocus = Array.isArray(tableNames) && tableNames.length > 0;
+
+    Object.entries(this._cardEls).forEach(([id, wrapper]) => {
+      const isActive = hasFocus && tableNames.some(n => n.toLowerCase() === id.toLowerCase());
+      const isDimmed = hasFocus && !isActive;
+
+      wrapper.style.borderColor  = isActive ? 'rgba(0,255,150,0.9)'
+                                 : isDimmed ? 'rgba(70,70,90,0.35)'
+                                            : 'rgba(120,100,255,0.55)';
+      wrapper.style.boxShadow    = isActive ? '0 0 18px rgba(0,255,150,0.4)'
+                                            : '0 4px 20px rgba(0,0,0,0.6)';
+      wrapper.style.opacity      = isDimmed ? '0.3' : '1';
+
+      const header = wrapper.querySelector('.cy-card-header');
+      if (header) {
+        header.style.background = isActive ? 'rgba(0,170,95,0.9)'
+                                 : isDimmed ? 'rgba(45,45,65,0.6)'
+                                            : 'rgba(80,60,180,0.85)';
+      }
+    });
   },
 
   extractTablesFromWorkspace: function () {
