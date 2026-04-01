@@ -103,14 +103,15 @@ body {
 }
 
 /* MENÚ HORIZONTAL DESPLEGABLE */
+/*Desactivado*/
 .horizontal-menu {
   display: flex;
   gap: 8px;
-  opacity: 0;
-  visibility: hidden;
-  transform: translateX(-20px);
+  /* opacity: 0; */
+  /* visibility: hidden; */
+  /* transform: translateX(-20px); */
   transition: opacity 0.3s ease, visibility 0.3s ease, transform 0.3s ease;
-  pointer-events: none;
+  /* pointer-events: none; */
   position: relative;
   z-index: 1050;
   align-items: center;
