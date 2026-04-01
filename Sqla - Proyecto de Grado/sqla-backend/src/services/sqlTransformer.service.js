@@ -218,6 +218,92 @@ export function injectSchemaInAST(ast, schemaName) {
 }
 
 /**
+ * Devuelve el nombre de salida de una columna SELECT del AST.
+ * Si tiene alias explícito lo usa; si no, usa el nombre de columna.
+ */
+function getOutputColumnName(col) {
+    if (col.as) return col.as;
+    if (col.expr && col.expr.type === 'column_ref') return col.expr.column;
+    return null;
+}
+
+/**
+ * Detecta columnas con nombre duplicado en SELECT y les agrega alias automáticos,
+ * evitando la colisión de claves en el objeto JS que devuelve mssql.
+ *
+ * Ejemplo:  SELECT a.id, b.id  →  SELECT a.id AS a_id, b.id AS b_id
+ */
+function deduplicateSelectColumns(ast) {
+    function processNode(node) {
+        if (!node || typeof node !== 'object') return;
+
+        if (node.type === 'select' && Array.isArray(node.columns)) {
+            const outputNames = node.columns.map(col => getOutputColumnName(col));
+
+            // Contar cuántas veces aparece cada nombre de salida
+            const nameCounts = {};
+            outputNames.forEach(name => {
+                if (name) nameCounts[name] = (nameCounts[name] || 0) + 1;
+            });
+
+            const duplicates = new Set(
+                Object.keys(nameCounts).filter(n => nameCounts[n] > 1)
+            );
+
+            if (duplicates.size > 0) {
+                // Aliases ya usados por columnas no duplicadas (para evitar conflictos)
+                const takenAliases = new Set(
+                    outputNames.filter(n => n && !duplicates.has(n))
+                );
+
+                node.columns.forEach(col => {
+                    const outputName = getOutputColumnName(col);
+                    if (!outputName || !duplicates.has(outputName)) return;
+
+                    // Candidato: prefijar con el alias de tabla si existe (a.id → a_id)
+                    let candidate;
+                    if (col.expr && col.expr.type === 'column_ref' && col.expr.table) {
+                        candidate = `${col.expr.table}_${col.expr.column}`;
+                    } else {
+                        candidate = outputName;
+                    }
+
+                    // Garantizar unicidad añadiendo sufijo numérico si es necesario
+                    if (takenAliases.has(candidate)) {
+                        let i = 1;
+                        while (takenAliases.has(`${candidate}_${i}`)) i++;
+                        candidate = `${candidate}_${i}`;
+                    }
+
+                    col.as = candidate;
+                    takenAliases.add(candidate);
+                    console.log(`🔀 Auto-alias columna duplicada: "${outputName}" → "${candidate}"`);
+                });
+            }
+        }
+
+        // Recursión para subqueries
+        for (const key of Object.keys(node)) {
+            const child = node[key];
+            if (!child || typeof child !== 'object') continue;
+            if (Array.isArray(child)) {
+                child.forEach(item => { if (item && typeof item === 'object') processNode(item); });
+            } else {
+                processNode(child);
+            }
+        }
+    }
+
+    if (Array.isArray(ast)) {
+        ast.forEach(item => processNode(item));
+    } else {
+        processNode(ast);
+    }
+
+    return ast;
+}
+
+/**
  * Transforma SQL directamente inyectando el schema
  */
 export function transformSQL(sql, schemaName) {
@@ -233,6 +319,9 @@ export function transformSQL(sql, schemaName) {
 
         // Inyectar schema y nombres únicos
         ast = injectSchemaInAST(ast, schemaName);
+
+        // Auto-alias columnas duplicadas para evitar colisión de claves en mssql
+        ast = deduplicateSelectColumns(ast);
         console.log(' AST transformado:', JSON.stringify(ast, null, 2));
 
         // Reconstruir SQL usando la instancia del parser

@@ -14,7 +14,7 @@ export function parseSQL(sql, schemaName = null) {
         throw new Error("El SQL está vacío");
     }
 
-    const opt = { database: "Transact-SQL" };
+    const opt = { database: "TransactSQL" };
 
     let originalAST;
     try {
