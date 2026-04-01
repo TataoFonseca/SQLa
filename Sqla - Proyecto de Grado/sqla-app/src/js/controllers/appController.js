@@ -102,6 +102,7 @@ mermaid.initialize({
 export const AppController = {
   workspace: null,
   _mermaidDebounceTimer: null,
+  _activeErdTab: 'ddl',
 
   init: function () {
 
@@ -496,6 +497,28 @@ export const AppController = {
             attributeFilter: ['style', 'class']
           });
         }
+
+        // === Click en categorías del toolbox → cambiar pestaña ERD ===
+        const ddlCat = toolbox.getToolboxItems().find(item =>
+          item.getName?.() === 'Crear tabla en base de datos'
+        );
+        const dmlCat = toolbox.getToolboxItems().find(item =>
+          item.getName?.() === 'Consultar a Base de datos'
+        );
+
+        ddlCat?.getDiv?.()?.addEventListener('click', () => {
+          const mermaidDiv = document.getElementById('mermaidDiv');
+          if (mermaidDiv) mermaidDiv.style.display = 'block';
+          this.switchErdTab('ddl');
+          this.resizeBlockly();
+        });
+
+        dmlCat?.getDiv?.()?.addEventListener('click', () => {
+          const mermaidDiv = document.getElementById('mermaidDiv');
+          if (mermaidDiv) mermaidDiv.style.display = 'block';
+          this.switchErdTab('dml');
+          this.resizeBlockly();
+        });
       }, 200);
     }
 
@@ -541,6 +564,14 @@ export const AppController = {
       mermaidDiv.style.display =
         mermaidDiv.style.display === 'none' ? 'block' : 'none';
       this.resizeBlockly();
+    });
+
+    document.getElementById('erdTabDDL')?.addEventListener('click', () => {
+      this.switchErdTab('ddl');
+    });
+
+    document.getElementById('erdTabDML')?.addEventListener('click', () => {
+      this.switchErdTab('dml');
     });
 
     showOutputBtn?.addEventListener('click', () => {
@@ -778,10 +809,12 @@ export const AppController = {
     mermaidDiv.style.display = 'block';
     this.resizeBlockly();
 
+    const panel = document.getElementById('erdPanelDDL');
+    if (!panel) return;
+
     const diagram = this.buildMermaidFromAST(ast);
     if (!diagram) {
-      mermaidDiv.innerHTML = `
-        <h2>Diagrama ERD</h2>
+      panel.innerHTML = `
         <p style="color: rgba(255,255,255,0.4); font-size: 0.9rem; margin-top: 12px;">
           No se pudo generar el diagrama para esta consulta.
         </p>
@@ -789,20 +822,15 @@ export const AppController = {
       return;
     }
 
-    mermaidDiv.innerHTML = `
-      <h2>Diagrama ERD</h2>
-      <div id="mermaidDiagram"></div>
-    `;
+    panel.innerHTML = `<div id="mermaidDiagram"></div>`;
 
     try {
-      // Mermaid necesita un id único en cada render para no conflictuar
       const renderId = 'mermaid-' + Date.now();
       const { svg } = await mermaid.render(renderId, diagram);
       document.getElementById('mermaidDiagram').innerHTML = svg;
     } catch (err) {
       console.error('Error renderizando Mermaid:', err);
-      mermaidDiv.innerHTML = `
-        <h2>Diagrama ERD</h2>
+      panel.innerHTML = `
         <pre style="color: #ff5555; font-size: 0.8rem;">Error al renderizar el diagrama.\n${err.message}</pre>
         <details style="margin-top: 8px;">
           <summary style="color: rgba(255,255,255,0.4); font-size: 0.8rem; cursor: pointer;">Ver código Mermaid generado</summary>
@@ -967,31 +995,183 @@ export const AppController = {
     const mermaidDiv = document.getElementById('mermaidDiv');
     if (!mermaidDiv || mermaidDiv.style.display === 'none') return;
 
+    const panel = document.getElementById('erdPanelDDL');
+    if (!panel) return;
+
     const tables = this.extractTablesFromWorkspace();
 
     if (tables.length === 0) {
-      mermaidDiv.innerHTML = `
-      <h2>Diagrama ERD</h2>
-      <p style="color: rgba(255,255,255,0.4); font-size: 0.9rem; margin-top: 12px;">
-        Agrega un bloque CREATE TABLE para ver el diagrama.
-      </p>
-    `;
+      panel.innerHTML = `
+        <p style="color: rgba(255,255,255,0.4); font-size: 0.9rem; margin-top: 12px;">
+          Agrega un bloque CREATE TABLE para ver el diagrama.
+        </p>
+      `;
       return;
     }
 
-    mermaidDiv.innerHTML = `
-    <h2>Diagrama ERD</h2>
-    <div id="erdDiagram" style="
-      display: flex;
-      flex-wrap: wrap;
-      gap: 20px;
-      padding: 16px;
-      align-items: flex-start;
-    ">
-      ${tables.map(t => this.renderTableCard(t)).join('')}
-    </div>
-  `;
+    panel.innerHTML = `
+      <div id="erdDiagram" style="
+        display: flex;
+        flex-wrap: wrap;
+        gap: 20px;
+        padding: 16px;
+        align-items: flex-start;
+      ">
+        ${tables.map(t => this.renderTableCard(t)).join('')}
+      </div>
+    `;
+  },
 
+  // ============================================================
+  // MÉTODO: cambiar pestaña activa del panel ERD
+  // ============================================================
+  switchErdTab: function (tab) {
+    this._activeErdTab = tab;
+
+    const btnDDL   = document.getElementById('erdTabDDL');
+    const btnDML   = document.getElementById('erdTabDML');
+    const panelDDL = document.getElementById('erdPanelDDL');
+    const panelDML = document.getElementById('erdPanelDML');
+    if (!btnDDL || !btnDML || !panelDDL || !panelDML) return;
+
+    const activeStyle = {
+      background:   'rgba(25,90,60,0.18)',
+      borderBottom: '2px solid rgba(50,160,100,0.7)',
+      color:        'rgba(100,200,145,0.95)',
+      fontWeight:   '500'
+    };
+    const inactiveStyle = {
+      background:   'transparent',
+      borderBottom: '2px solid transparent',
+      color:        'rgba(255,255,255,0.3)',
+      fontWeight:   '400'
+    };
+
+    if (tab === 'ddl') {
+      Object.assign(btnDDL.style, activeStyle);
+      Object.assign(btnDML.style, inactiveStyle);
+      panelDDL.style.display = 'block';
+      panelDML.style.display = 'none';
+      // Re-renderizar el workspace si hay tablas definidas
+      this.updateMermaidFromWorkspace();
+    } else {
+      Object.assign(btnDML.style, activeStyle);
+      Object.assign(btnDDL.style, inactiveStyle);
+      panelDML.style.display = 'block';
+      panelDDL.style.display = 'none';
+      this.renderChinookERD();
+    }
+  },
+
+  // ============================================================
+  // MÉTODO: renderizar el ERD estático de Chinook DB
+  // ============================================================
+  renderChinookERD: async function () {
+    const panel = document.getElementById('erdPanelDML');
+    if (!panel) return;
+
+    // Evitar re-renderizar si ya está listo
+    if (panel.dataset.rendered === 'true') return;
+
+    panel.innerHTML = `<p style="color:rgba(255,255,255,0.4); font-size:0.85rem; margin:8px 0;">Cargando ERD de Chinook...</p>`;
+
+    const diagram = `erDiagram
+  Artist {
+    int ArtistId PK
+    string Name
+  }
+  Album {
+    int AlbumId PK
+    string Title
+    int ArtistId FK
+  }
+  Customer {
+    int CustomerId PK
+    string FirstName
+    string LastName
+    string Company
+    string Email
+    string Phone
+    int SupportRepId FK
+  }
+  Employee {
+    int EmployeeId PK
+    string LastName
+    string FirstName
+    string Title
+    int ReportsTo FK
+    datetime BirthDate
+    datetime HireDate
+    string Email
+  }
+  Genre {
+    int GenreId PK
+    string Name
+  }
+  Invoice {
+    int InvoiceId PK
+    int CustomerId FK
+    datetime InvoiceDate
+    string BillingAddress
+    string BillingCity
+    string BillingCountry
+    float Total
+  }
+  InvoiceLine {
+    int InvoiceLineId PK
+    int InvoiceId FK
+    int TrackId FK
+    float UnitPrice
+    int Quantity
+  }
+  MediaType {
+    int MediaTypeId PK
+    string Name
+  }
+  Playlist {
+    int PlaylistId PK
+    string Name
+  }
+  PlaylistTrack {
+    int PlaylistId FK
+    int TrackId FK
+  }
+  Track {
+    int TrackId PK
+    string Name
+    int AlbumId FK
+    int MediaTypeId FK
+    int GenreId FK
+    string Composer
+    int Milliseconds
+    int Bytes
+    float UnitPrice
+  }
+  Artist ||--o{ Album : "ArtistId"
+  Employee ||--o{ Customer : "SupportRepId"
+  Employee ||--o| Employee : "ReportsTo"
+  Customer ||--o{ Invoice : "CustomerId"
+  Invoice ||--o{ InvoiceLine : "InvoiceId"
+  Track ||--o{ InvoiceLine : "TrackId"
+  Playlist ||--o{ PlaylistTrack : "PlaylistId"
+  Track ||--o{ PlaylistTrack : "TrackId"
+  Album ||--o{ Track : "AlbumId"
+  MediaType ||--o{ Track : "MediaTypeId"
+  Genre ||--o{ Track : "GenreId"`;
+
+    panel.innerHTML = `<div id="chinookDiagram"></div>`;
+
+    try {
+      const renderId = 'chinook-' + Date.now();
+      const { svg } = await mermaid.render(renderId, diagram);
+      document.getElementById('chinookDiagram').innerHTML = svg;
+      panel.dataset.rendered = 'true';
+    } catch (err) {
+      console.error('Error renderizando ERD Chinook:', err);
+      panel.innerHTML = `
+        <pre style="color:#ff5555; font-size:0.8rem;">Error al renderizar el diagrama Chinook.\n${err.message}</pre>
+      `;
+    }
   },
 
   extractTablesFromWorkspace: function () {

@@ -92,7 +92,30 @@
       </div>
 
       <!-- Mermaid -->
-      <div id="mermaidDiv" class="mermaid-container" style="display:none;"></div>
+      <div id="mermaidDiv" class="mermaid-container" style="display:none;">
+        <h2>Diagrama ERD</h2>
+        <!-- Pestañas -->
+        <div style="display:flex; border-bottom:1px solid rgba(255,255,255,0.07); margin-bottom:14px;">
+          <button id="erdTabDDL" style="
+            flex:1; padding:9px 10px; cursor:pointer; border:none; letter-spacing:0.02em;
+            background:rgba(25,90,60,0.18);
+            border-bottom:2px solid rgba(50,160,100,0.7);
+            color:rgba(100,200,145,0.95);
+            font-size:12px; font-weight:500;
+          ">Crear tabla</button>
+          <button id="erdTabDML" style="
+            flex:1; padding:9px 10px; cursor:pointer; border:none; letter-spacing:0.02em;
+            background:transparent;
+            border-bottom:2px solid transparent;
+            color:rgba(255,255,255,0.3);
+            font-size:12px; font-weight:400;
+          ">Consultar BD</button>
+        </div>
+        <!-- Panel DDL: tabla siendo creada -->
+        <div id="erdPanelDDL"></div>
+        <!-- Panel DML: ERD de Chinook -->
+        <div id="erdPanelDML" style="display:none;"></div>
+      </div>
     </div>
 
   </div>
