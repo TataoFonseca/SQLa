@@ -2,7 +2,8 @@
 
 import * as Blockly from 'blockly';
 import { javascriptGenerator } from 'blockly/javascript';
-import mermaid from 'mermaid';
+// mermaid: eliminado — el tab DML pasó a Cytoscape (renderERD) y el tab DDL usa HTML cards (updateDDLDiagram)
+import { chinookSchema } from '../data/chinookSchema.js';
 import { apiService } from '../services/apiService.js';
 
 // === Importe de Bloques===
@@ -93,15 +94,12 @@ import { ORDER_BY_DEFINITION, ORDER_BY_GENERATOR } from '../blocks/dml_OrderByBl
 import { registerOrderByExpressionExtension } from '../blocks/extensions/orderByExpressionExtenssion.js'; //Extensión para ORDER BY Expression
 
 
-mermaid.initialize({
-  startOnLoad: false,
-  theme: "default",
-  securityLevel: "loose"
-});
+// mermaid.initialize: eliminado junto con el import de mermaid
 
 export const AppController = {
   workspace: null,
-  _mermaidDebounceTimer: null,
+  // Antes: _mermaidDebounceTimer — renombrado a _erdDebounceTimer porque debouncea el ERD en general (DDL + DML), no solo Mermaid
+  _erdDebounceTimer: null,
   _activeErdTab: 'ddl',
   _cytoscapeInstance: null,
   _cardEls: null,
@@ -553,9 +551,9 @@ export const AppController = {
       const code = javascriptGenerator.workspaceToCode(this.workspace);
       console.log('SQL generado:', code);
 
-      clearTimeout(this._mermaidDebounceTimer);
-      this._mermaidDebounceTimer = setTimeout(() => {
-        this.updateMermaidFromWorkspace();
+      clearTimeout(this._erdDebounceTimer);
+      this._erdDebounceTimer = setTimeout(() => {
+        this.updateDDLDiagram();
 
         // Highlight reactivo en tab DML
         if (this._activeErdTab === 'dml' && this._cytoscapeInstance) {
@@ -740,7 +738,7 @@ export const AppController = {
       return;
     }
 
-    const { executionResult, transformedSQL, ast } = result;
+    const { executionResult, transformedSQL } = result; // ast: eliminado — updateMermaidFromAST fue removido
     const rows = executionResult?.rows || [];
     const rowsAffected = executionResult?.rowsAffected?.[0] ?? null;
 
@@ -808,10 +806,7 @@ export const AppController = {
       </details>
     `;
 
-    // Actualizar diagrama Mermaid con el AST de la respuesta
-    if (ast) {
-      this.updateMermaidFromAST(ast);
-    }
+    // updateMermaidFromAST: eliminado — el tab DML pasó a renderERD(chinookSchema) con Cytoscape
   },
 
   // ============================================================
@@ -823,200 +818,16 @@ export const AppController = {
     }
   },
 
-  // ============================================================
-  // MÉTODO: actualizar el diagrama Mermaid desde el AST
-  // ============================================================
-  updateMermaidFromAST: async function (ast) {
-    const mermaidDiv = document.getElementById('mermaidDiv');
-    if (!mermaidDiv) return;
-
-    // Mostrar el panel si estaba oculto
-    mermaidDiv.style.display = 'block';
-    this.resizeBlockly();
-
-    const panel = document.getElementById('erdPanelDDL');
-    if (!panel) return;
-
-    const diagram = this.buildMermaidFromAST(ast);
-    if (!diagram) {
-      panel.innerHTML = `
-        <p style="color: rgba(255,255,255,0.4); font-size: 0.9rem; margin-top: 12px;">
-          No se pudo generar el diagrama para esta consulta.
-        </p>
-      `;
-      return;
-    }
-
-    panel.innerHTML = `<div id="mermaidDiagram"></div>`;
-
-    try {
-      const renderId = 'mermaid-' + Date.now();
-      const { svg } = await mermaid.render(renderId, diagram);
-      document.getElementById('mermaidDiagram').innerHTML = svg;
-    } catch (err) {
-      console.error('Error renderizando Mermaid:', err);
-      panel.innerHTML = `
-        <pre style="color: #ff5555; font-size: 0.8rem;">Error al renderizar el diagrama.\n${err.message}</pre>
-        <details style="margin-top: 8px;">
-          <summary style="color: rgba(255,255,255,0.4); font-size: 0.8rem; cursor: pointer;">Ver código Mermaid generado</summary>
-          <pre style="color: #888; font-size: 0.78rem; margin-top: 6px;">${diagram}</pre>
-        </details>
-      `;
-    }
-  },
+  // updateMermaidFromAST: eliminado — el tab DML pasó a renderERD(chinookSchema) con Cytoscape.
+  //   Para importación dinámica de BDs en el futuro, conectar el schema parseado a renderERD() directamente.
+  // buildMermaidFromAST: eliminado — era el helper de updateMermaidFromAST.
 
   // ============================================================
-  // MÉTODO: construir string Mermaid a partir del AST del backend
+  // MÉTODO: actualizar el diagrama DDL desde el workspace
+  // Antes: updateMermaidFromWorkspace — renombrado porque ya no
+  //        usa Mermaid; renderiza HTML cards directamente.
   // ============================================================
-  buildMermaidFromAST: function (ast) {
-    // Normalizar: el AST puede llegar como array o como objeto
-    const nodes = Array.isArray(ast) ? ast : [ast];
-
-    // Acumuladores
-    const tables = {};   // { tableName: { columns: [], pk: null } }
-    const relations = [];   // [{ from, to, type, label }]
-
-    // Limpiar nombre de tabla: quitar schema (session_xxx.tableName_shortId → tableName)
-    function cleanName(raw) {
-      if (!raw) return 'tabla';
-      // quitar schema si viene con punto
-      const parts = raw.split('.');
-      let name = parts[parts.length - 1];
-      // quitar sufijo _xxxxxxxx (8 hex chars) que añade el transformer
-      name = name.replace(/_[a-f0-9]{8}$/i, '');
-      return name;
-    }
-
-    function ensureTable(raw) {
-      const name = cleanName(raw);
-      if (!tables[name]) tables[name] = { columns: [], pk: null };
-      return name;
-    }
-
-    // Mapear tipos SQL a tipos Mermaid más limpios
-    function mapType(dataType) {
-      if (!dataType) return 'string';
-      const t = (dataType.dataType || dataType).toUpperCase();
-      if (['INT', 'INTEGER', 'BIGINT', 'SMALLINT', 'TINYINT'].includes(t)) return 'int';
-      if (['DECIMAL', 'NUMERIC', 'FLOAT', 'REAL', 'MONEY'].includes(t)) return 'float';
-      if (['BIT', 'BOOLEAN'].includes(t)) return 'boolean';
-      if (['DATE'].includes(t)) return 'date';
-      if (['DATETIME', 'DATETIME2', 'TIMESTAMP'].includes(t)) return 'datetime';
-      return 'string';
-    }
-
-    for (const node of nodes) {
-      if (!node) continue;
-
-      // ── CREATE TABLE ──────────────────────────────────────────
-      if (node.type === 'create' && node.keyword === 'table') {
-        const rawName = node.table?.[0]?.table || node.table?.[0];
-        const tableName = ensureTable(rawName);
-
-        const defs = node.create_definitions || [];
-        for (const def of defs) {
-          // Columna normal
-          if (def.resource === 'column') {
-            const colName = def.column?.column || def.column;
-            const colType = mapType(def.definition);
-            const isPK = def.primary_key || false;
-            const nullable = def.nullable?.type !== 'not null';
-
-            tables[tableName].columns.push({
-              name: colName,
-              type: colType,
-              pk: isPK,
-              nullable
-            });
-
-            if (isPK) tables[tableName].pk = colName;
-          }
-
-          // PRIMARY KEY constraint separado
-          if (def.resource === 'constraint' && def.constraint_type === 'PRIMARY KEY') {
-            const pkCol = def.definition?.[0]?.column || def.definition?.[0];
-            if (pkCol) tables[tableName].pk = pkCol;
-            // Marcar la columna como PK
-            const col = tables[tableName].columns.find(c => c.name === pkCol);
-            if (col) col.pk = true;
-          }
-
-          // FOREIGN KEY constraint
-          if (def.resource === 'constraint' && def.constraint_type === 'FOREIGN KEY') {
-            const fromCol = def.definition?.[0]?.column || def.definition?.[0];
-            const refTable = def.reference_definition?.table?.[0]?.table
-              || def.reference_definition?.table?.[0];
-            const refCol = def.reference_definition?.definition?.[0]?.column
-              || def.reference_definition?.definition?.[0];
-
-            if (refTable) {
-              ensureTable(refTable);
-              relations.push({
-                from: tableName,
-                to: cleanName(refTable),
-                label: `${fromCol} → ${refCol || '?'}`
-              });
-            }
-          }
-        }
-      }
-
-      // ── SELECT — extraer tablas referenciadas ─────────────────
-      if (node.type === 'select') {
-        const fromList = Array.isArray(node.from) ? node.from : [];
-        for (const f of fromList) {
-          if (f.table) ensureTable(f.table);
-        }
-
-        const joins = Array.isArray(node.join) ? node.join : [];
-        for (const j of joins) {
-          if (j.table?.table) {
-            const left = cleanName(fromList[0]?.table);
-            const right = ensureTable(j.table.table);
-            relations.push({ from: left, to: right, label: j.join || 'JOIN' });
-          }
-        }
-      }
-
-      // ── INSERT / UPDATE / DELETE — registrar tabla ────────────
-      if (['insert', 'update', 'delete'].includes(node.type)) {
-        const rawTable = node.table?.[0]?.table || node.table?.[0]
-          || node.from?.[0]?.table;
-        if (rawTable) ensureTable(rawTable);
-      }
-    }
-
-    // Si no hay ninguna tabla, no hay diagrama
-    if (Object.keys(tables).length === 0) return null;
-
-    // ── Construir string Mermaid ──────────────────────────────────
-    let diagram = 'erDiagram\n';
-
-    for (const [name, info] of Object.entries(tables)) {
-      diagram += `  ${name} {\n`;
-      if (info.columns.length === 0) {
-        // Tabla sin columnas conocidas (referenciada en SELECT, etc.)
-        diagram += `    string id\n`;
-      } else {
-        for (const col of info.columns) {
-          const pkMark = col.pk ? ' PK' : '';
-          diagram += `    ${col.type} ${col.name}${pkMark}\n`;
-        }
-      }
-      diagram += `  }\n`;
-    }
-
-    for (const rel of relations) {
-      // Asegurarse de que ambas tablas existen en el diagrama
-      if (!tables[rel.from]) ensureTable(rel.from);
-      if (!tables[rel.to]) ensureTable(rel.to);
-      diagram += `  ${rel.from} ||--o{ ${rel.to} : "${rel.label}"\n`;
-    }
-
-    return diagram;
-  },
-
-  updateMermaidFromWorkspace: async function () {
+  updateDDLDiagram: async function () {
     const mermaidDiv = document.getElementById('mermaidDiv');
     if (!mermaidDiv || mermaidDiv.style.display === 'none') return;
 
@@ -1053,23 +864,23 @@ export const AppController = {
   switchErdTab: function (tab) {
     this._activeErdTab = tab;
 
-    const btnDDL   = document.getElementById('erdTabDDL');
-    const btnDML   = document.getElementById('erdTabDML');
+    const btnDDL = document.getElementById('erdTabDDL');
+    const btnDML = document.getElementById('erdTabDML');
     const panelDDL = document.getElementById('erdPanelDDL');
     const panelDML = document.getElementById('erdPanelDML');
     if (!btnDDL || !btnDML || !panelDDL || !panelDML) return;
 
     const activeStyle = {
-      background:   'rgba(25,90,60,0.18)',
+      background: 'rgba(25,90,60,0.18)',
       borderBottom: '2px solid rgba(50,160,100,0.7)',
-      color:        'rgba(100,200,145,0.95)',
-      fontWeight:   '500'
+      color: 'rgba(100,200,145,0.95)',
+      fontWeight: '500'
     };
     const inactiveStyle = {
-      background:   'transparent',
+      background: 'transparent',
       borderBottom: '2px solid transparent',
-      color:        'rgba(255,255,255,0.3)',
-      fontWeight:   '400'
+      color: 'rgba(255,255,255,0.3)',
+      fontWeight: '400'
     };
 
     const zoomControls = document.getElementById('erdZoomControls');
@@ -1080,23 +891,27 @@ export const AppController = {
       panelDDL.style.display = 'block';
       panelDML.style.display = 'none';
       if (zoomControls) zoomControls.style.display = 'none';
-      // Re-renderizar el workspace si hay tablas definidas
-      this.updateMermaidFromWorkspace();
+      this.updateDDLDiagram();
     } else {
       Object.assign(btnDML.style, activeStyle);
       Object.assign(btnDDL.style, inactiveStyle);
       panelDML.style.display = 'block';
       panelDDL.style.display = 'none';
       if (zoomControls) zoomControls.style.display = 'flex';
-      this.renderChinookERD();
+      this.renderERD(chinookSchema);
     }
   },
 
   // ============================================================
-  // MÉTODO: renderizar el ERD de Chinook con Cytoscape.js
+  // MÉTODO: renderizar el ERD con Cytoscape.js
+  // Antes: renderChinookERD() — renombrado a renderERD(schema)
+  //        para aceptar cualquier schema { tables, fkEdges },
+  //        no solo el de Chinook. El schema de Chinook viene de
+  //        chinookSchema.js; futuros schemas de BDs importadas
+  //        seguirán el mismo formato y se pasarán aquí directamente.
   // ── Overlay HTML manual (sin plugins externos) ──────────────
   // ============================================================
-  renderChinookERD: function () {
+  renderERD: function (schema) {
     const panel = document.getElementById('erdPanelDML');
     if (!panel) return;
 
@@ -1117,117 +932,16 @@ export const AppController = {
 
     // ── Constantes de dimensión ───────────────────────────────
     const NODE_W = 200;
-    const HDR_H  = 32;
-    const ROW_H  = 22;
+    const HDR_H = 32;
+    const ROW_H = 22;
 
-    // ── Definición de tablas Chinook ──────────────────────────
-    const tables = [
-      { id: 'Artist', cols: [
-        { name: 'ArtistId', type: 'INT',           pk: true  },
-        { name: 'Name',     type: 'NVARCHAR(120)',  pk: false },
-      ]},
-      { id: 'Album', cols: [
-        { name: 'AlbumId',  type: 'INT',           pk: true                },
-        { name: 'Title',    type: 'NVARCHAR(160)',  pk: false               },
-        { name: 'ArtistId', type: 'INT',           pk: false, fk: 'Artist' },
-      ]},
-      { id: 'Track', cols: [
-        { name: 'TrackId',      type: 'INT',           pk: true                    },
-        { name: 'Name',         type: 'NVARCHAR(200)',  pk: false                   },
-        { name: 'AlbumId',      type: 'INT',           pk: false, fk: 'Album'      },
-        { name: 'MediaTypeId',  type: 'INT',           pk: false, fk: 'MediaType'  },
-        { name: 'GenreId',      type: 'INT',           pk: false, fk: 'Genre'      },
-        { name: 'Composer',     type: 'NVARCHAR(220)',  pk: false                   },
-        { name: 'Milliseconds', type: 'INT',            pk: false                   },
-        { name: 'Bytes',        type: 'INT',            pk: false                   },
-        { name: 'UnitPrice',    type: 'NUMERIC(10,2)',  pk: false                   },
-      ]},
-      { id: 'MediaType', cols: [
-        { name: 'MediaTypeId', type: 'INT',           pk: true  },
-        { name: 'Name',        type: 'NVARCHAR(120)',  pk: false },
-      ]},
-      { id: 'Genre', cols: [
-        { name: 'GenreId', type: 'INT',           pk: true  },
-        { name: 'Name',    type: 'NVARCHAR(120)',  pk: false },
-      ]},
-      { id: 'Playlist', cols: [
-        { name: 'PlaylistId', type: 'INT',           pk: true  },
-        { name: 'Name',       type: 'NVARCHAR(120)',  pk: false },
-      ]},
-      { id: 'PlaylistTrack', cols: [
-        { name: 'PlaylistId', type: 'INT', pk: false, fk: 'Playlist' },
-        { name: 'TrackId',    type: 'INT', pk: false, fk: 'Track'    },
-      ]},
-      { id: 'Customer', cols: [
-        { name: 'CustomerId',   type: 'INT',           pk: true                  },
-        { name: 'FirstName',    type: 'NVARCHAR(40)',   pk: false                 },
-        { name: 'LastName',     type: 'NVARCHAR(20)',   pk: false                 },
-        { name: 'Company',      type: 'NVARCHAR(80)',   pk: false                 },
-        { name: 'Address',      type: 'NVARCHAR(70)',   pk: false                 },
-        { name: 'City',         type: 'NVARCHAR(40)',   pk: false                 },
-        { name: 'State',        type: 'NVARCHAR(40)',   pk: false                 },
-        { name: 'Country',      type: 'NVARCHAR(40)',   pk: false                 },
-        { name: 'PostalCode',   type: 'NVARCHAR(10)',   pk: false                 },
-        { name: 'Phone',        type: 'NVARCHAR(24)',   pk: false                 },
-        { name: 'Fax',          type: 'NVARCHAR(24)',   pk: false                 },
-        { name: 'Email',        type: 'NVARCHAR(60)',   pk: false                 },
-        { name: 'SupportRepId', type: 'INT',            pk: false, fk: 'Employee' },
-      ]},
-      { id: 'Employee', cols: [
-        { name: 'EmployeeId', type: 'INT',           pk: true                  },
-        { name: 'LastName',   type: 'NVARCHAR(20)',   pk: false                 },
-        { name: 'FirstName',  type: 'NVARCHAR(20)',   pk: false                 },
-        { name: 'Title',      type: 'NVARCHAR(30)',   pk: false                 },
-        { name: 'ReportsTo',  type: 'INT',            pk: false, fk: 'Employee' },
-        { name: 'BirthDate',  type: 'DATETIME',       pk: false                 },
-        { name: 'HireDate',   type: 'DATETIME',       pk: false                 },
-        { name: 'Address',    type: 'NVARCHAR(70)',   pk: false                 },
-        { name: 'City',       type: 'NVARCHAR(40)',   pk: false                 },
-        { name: 'State',      type: 'NVARCHAR(40)',   pk: false                 },
-        { name: 'Country',    type: 'NVARCHAR(40)',   pk: false                 },
-        { name: 'PostalCode', type: 'NVARCHAR(10)',   pk: false                 },
-        { name: 'Phone',      type: 'NVARCHAR(24)',   pk: false                 },
-        { name: 'Fax',        type: 'NVARCHAR(24)',   pk: false                 },
-        { name: 'Email',      type: 'NVARCHAR(60)',   pk: false                 },
-      ]},
-      { id: 'Invoice', cols: [
-        { name: 'InvoiceId',         type: 'INT',           pk: true                  },
-        { name: 'CustomerId',        type: 'INT',           pk: false, fk: 'Customer' },
-        { name: 'InvoiceDate',       type: 'DATETIME',      pk: false                 },
-        { name: 'BillingAddress',    type: 'NVARCHAR(70)',  pk: false                 },
-        { name: 'BillingCity',       type: 'NVARCHAR(40)',  pk: false                 },
-        { name: 'BillingState',      type: 'NVARCHAR(40)',  pk: false                 },
-        { name: 'BillingCountry',    type: 'NVARCHAR(40)',  pk: false                 },
-        { name: 'BillingPostalCode', type: 'NVARCHAR(10)',  pk: false                 },
-        { name: 'Total',             type: 'NUMERIC(10,2)', pk: false                 },
-      ]},
-      { id: 'InvoiceLine', cols: [
-        { name: 'InvoiceLineId', type: 'INT',           pk: true                 },
-        { name: 'InvoiceId',     type: 'INT',           pk: false, fk: 'Invoice' },
-        { name: 'TrackId',       type: 'INT',           pk: false, fk: 'Track'   },
-        { name: 'UnitPrice',     type: 'NUMERIC(10,2)', pk: false                },
-        { name: 'Quantity',      type: 'INT',           pk: false                },
-      ]},
-    ];
-
-    const fkEdges = [
-      { source: 'Album',        target: 'Artist',    label: 'ArtistId'     },
-      { source: 'Track',        target: 'Album',     label: 'AlbumId'      },
-      { source: 'Track',        target: 'MediaType', label: 'MediaTypeId'  },
-      { source: 'Track',        target: 'Genre',     label: 'GenreId'      },
-      { source: 'Customer',     target: 'Employee',  label: 'SupportRepId' },
-      { source: 'Employee',     target: 'Employee',  label: 'ReportsTo'    },
-      { source: 'Invoice',      target: 'Customer',  label: 'CustomerId'   },
-      { source: 'InvoiceLine',  target: 'Invoice',   label: 'InvoiceId'    },
-      { source: 'InvoiceLine',  target: 'Track',     label: 'TrackId'      },
-      { source: 'PlaylistTrack',target: 'Playlist',  label: 'PlaylistId'   },
-      { source: 'PlaylistTrack',target: 'Track',     label: 'TrackId'      },
-    ];
+    // ── Datos del schema (tablas y relaciones FK) ─────────────
+    const { tables, fkEdges } = schema;
 
     // ── Función para construir HTML de una tarjeta ────────────
     const buildCardHTML = (tableId, cols) => {
       const rows = cols.map(col => {
-        const icon  = col.pk ? '🔑' : col.fk ? '🔗' : '○';
+        const icon = col.pk ? '🔑' : col.fk ? '🔗' : '○';
         const color = col.pk ? '#f5c542' : col.fk ? '#4fc3f7' : 'rgba(255,255,255,0.82)';
         return `<div style="
           height:${ROW_H}px; box-sizing:border-box; padding:0 8px;
@@ -1257,8 +971,8 @@ export const AppController = {
     const elements = [
       ...tables.map(t => ({
         data: {
-          id:     t.id,
-          width:  NODE_W,
+          id: t.id,
+          width: NODE_W,
           height: HDR_H + t.cols.length * ROW_H,
         }
       })),
@@ -1276,61 +990,70 @@ export const AppController = {
           selector: 'node',
           style: {
             'background-opacity': 0,
-            'border-opacity':     0,
-            'width':  'data(width)',
+            'border-opacity': 0,
+            'width': 'data(width)',
             'height': 'data(height)',
-            'label':  '',
+            'label': '',
           }
         },
         {
           selector: 'edge',
           style: {
-            'width':                     1.5,
-            'line-color':                'rgba(120,100,255,0.45)',
-            'target-arrow-color':        'rgba(140,120,255,0.65)',
-            'target-arrow-shape':        'triangle',
-            'curve-style':               'bezier',
-            'label':                     'data(label)',
-            'font-size':                 '9px',
-            'color':                     'rgba(200,200,255,0.5)',
-            'text-background-color':     'rgba(10,10,28,0.92)',
-            'text-background-opacity':   1,
-            'text-background-padding':   '2px',
-            'font-family':               'Fira Code, monospace',
+            'width': 1.5,
+            'line-color': 'rgba(120,100,255,0.45)',
+            'target-arrow-color': 'rgba(140,120,255,0.65)',
+            'target-arrow-shape': 'triangle',
+            'curve-style': 'bezier',
+            'label': 'data(label)',
+            'font-size': '9px',
+            'color': 'rgba(200,200,255,0.5)',
+            'text-background-color': 'rgba(10,10,28,0.92)',
+            'text-background-opacity': 1,
+            'text-background-padding': '2px',
+            'font-family': 'Fira Code, monospace',
           }
         },
         {
           selector: 'edge:loop',
           style: {
-            'curve-style':              'bezier',
-            'loop-direction':           '-45deg',
-            'loop-sweep':               '40deg',
-            'control-point-distance':   80,
+            'curve-style': 'bezier',
+            'loop-direction': '-45deg',
+            'loop-sweep': '40deg',
+            'control-point-distance': 80,
           }
         }
       ],
-      layout: {
-        name:            'cose',
-        animate:         false,
-        fit:             true,
-        padding:         60,
-        randomize:       true,
-        nodeRepulsion:   function () { return 14000; },
-        idealEdgeLength: function () { return 180;   },
-        edgeElasticity:  function () { return 100;   },
-        gravity:         80,
-        numIter:         1200,
-        componentSpacing:80,
+      layout: { //Layout preset para las tablas de Chinook DB
+        name: 'preset',
+        animate: false,
+        fit: true,
+        padding: 40,
+        // Posiciones manuales para replicar el layout de la imagen de referencia de Chinook.
+        // Coordenadas = centro del nodo. Con fit:true Cytoscape hace zoom para encajarlo todo.
+        positions: {
+          Artist:        { x: 120,  y: 40  },
+          Album:         { x: 370,  y: 50  },
+          Track:         { x: 630,  y: 120 },
+          MediaType:     { x: 900,  y: 40  },
+          Genre:         { x: 900,  y: 220 },
+          Playlist:      { x: 120,  y: 320 },
+          PlaylistTrack: { x: 370,  y: 320 },
+          Employee:      { x: 120,  y: 580 },
+          Customer:      { x: 390,  y: 560 },
+          InvoiceLine:   { x: 660,  y: 430 },
+          Invoice:       { x: 900,  y: 510 },
+        },
       },
       userZoomingEnabled: true,
       userPanningEnabled: true,
       minZoom: 0.08,
       maxZoom: 4,
+      wheelSensitivity: 0.2,
     });
 
     // ── Overlay HTML: tarjetas de tabla ───────────────────────
-    const overlay  = document.getElementById('cyOverlay');
-    const cardEls  = {};
+    const overlay = document.getElementById('cyOverlay');
+    const cardEls = {};
 
     tables.forEach(t => {
       const nodeH = HDR_H + t.cols.length * ROW_H;
@@ -1354,10 +1077,10 @@ export const AppController = {
         const el = cardEls[node.id()];
         if (!el) return;
         const pos = node.renderedPosition();
-        const w   = node.data('width')  * zoom;
-        const h   = node.data('height') * zoom;
-        el.style.left      = `${pos.x - w / 2}px`;
-        el.style.top       = `${pos.y - h / 2}px`;
+        const w = node.data('width') * zoom;
+        const h = node.data('height') * zoom;
+        el.style.left = `${pos.x - w / 2}px`;
+        el.style.top = `${pos.y - h / 2}px`;
         el.style.transform = `scale(${zoom})`;
       });
     };
@@ -1368,8 +1091,8 @@ export const AppController = {
     cy.one('layoutstop', updatePositions);
 
     this._cytoscapeInstance = cy;
-    this._cardEls            = cardEls;
-    panel.dataset.rendered   = 'true';
+    this._cardEls = cardEls;
+    panel.dataset.rendered = 'true';
   },
 
   // ============================================================
@@ -1384,18 +1107,18 @@ export const AppController = {
       const isActive = hasFocus && tableNames.some(n => n.toLowerCase() === id.toLowerCase());
       const isDimmed = hasFocus && !isActive;
 
-      wrapper.style.borderColor  = isActive ? 'rgba(0,255,150,0.9)'
-                                 : isDimmed ? 'rgba(70,70,90,0.35)'
-                                            : 'rgba(120,100,255,0.55)';
-      wrapper.style.boxShadow    = isActive ? '0 0 18px rgba(0,255,150,0.4)'
-                                            : '0 4px 20px rgba(0,0,0,0.6)';
-      wrapper.style.opacity      = isDimmed ? '0.3' : '1';
+      wrapper.style.borderColor = isActive ? 'rgba(0,255,150,0.9)'
+        : isDimmed ? 'rgba(70,70,90,0.35)'
+          : 'rgba(120,100,255,0.55)';
+      wrapper.style.boxShadow = isActive ? '0 0 18px rgba(0,255,150,0.4)'
+        : '0 4px 20px rgba(0,0,0,0.6)';
+      wrapper.style.opacity = isDimmed ? '0.3' : '1';
 
       const header = wrapper.querySelector('.cy-card-header');
       if (header) {
         header.style.background = isActive ? 'rgba(0,170,95,0.9)'
-                                 : isDimmed ? 'rgba(45,45,65,0.6)'
-                                            : 'rgba(80,60,180,0.85)';
+          : isDimmed ? 'rgba(45,45,65,0.6)'
+            : 'rgba(80,60,180,0.85)';
       }
     });
   },
@@ -1614,104 +1337,8 @@ export const AppController = {
   `;
   },
 
-  buildMermaidFromWorkspace: function () {
-    const allBlocks = this.workspace.getAllBlocks(false);
-    const createTableBlocks = allBlocks.filter(b => b.type === 'sql_create_table');
-
-    if (createTableBlocks.length === 0) return null;
-
-    const tables = {};   // { tableName: [{ name, type, pk, nullable }] }
-    const relations = []; // [{ from, to, label }]
-
-    function mapType(blocklyType) {
-      const t = (blocklyType || '').toUpperCase();
-      if (['INTEGER', 'FLOAT'].includes(t)) return t.toLowerCase();
-      if (t === 'VARCHAR' || t === 'CHAR') return 'string';
-      if (t === 'BOOL') return 'boolean';
-      if (t === 'DATE') return 'date';
-      if (t === 'DATETIME') return 'datetime';
-      return 'string';
-    }
-
-    for (const tableBlock of createTableBlocks) {
-      const tableName = tableBlock.getFieldValue('TABLE_NAME') || 'tabla';
-      tables[tableName] = [];
-
-      let colBlock = tableBlock.getInputTargetBlock('COLUMNS');
-      while (colBlock) {
-        const isPK = colBlock.type === 'sql_column_primary_key';
-        const isCol = colBlock.type === 'sql_column_definition';
-
-        if (isCol || isPK) {
-          const colName = colBlock.getFieldValue('COLUMN_NAME') || 'col';
-          const dataType = colBlock.getFieldValue('DATA_TYPE') || 'string';
-          const col = {
-            name: colName,
-            type: mapType(dataType),
-            pk: isPK,
-            nullable: true
-          };
-
-          // Leer constraints encadenados lateralmente
-          if (isCol) {
-            let constraint = colBlock.getInputTargetBlock('FIRST_CONSTRAINT');
-            while (constraint) {
-              if (constraint.type === 'sql_column_not_null') col.nullable = false;
-              if (constraint.type === 'sql_column_unique') col.unique = true;
-              if (constraint.type === 'sql_column_references') {
-                const refTable = constraint.getFieldValue('REF_TABLE');
-                const refCol = constraint.getFieldValue('REF_COLUMN');
-                if (refTable) {
-                  relations.push({
-                    from: tableName,
-                    to: refTable,
-                    label: `${colName} → ${refCol || '?'}`
-                  });
-                }
-              }
-              constraint = constraint.getInputTargetBlock('NEXT_CONSTRAINT');
-            }
-          }
-
-          if (isPK) col.nullable = false;
-          tables[tableName].push(col);
-        }
-
-        colBlock = colBlock.getNextBlock();
-      }
-    }
-
-    if (Object.keys(tables).length === 0) return null;
-
-    // Construir string Mermaid
-    let diagram = 'erDiagram\n';
-
-    for (const [name, columns] of Object.entries(tables)) {
-      diagram += `  ${name} {\n`;
-      if (columns.length === 0) {
-        diagram += `    string id\n`;
-      } else {
-        for (const col of columns) {
-          const pkMark = col.pk ? ' PK' : '';
-          const fkMark = !col.pk && relations.some(r => r.from === name && r.label.startsWith(col.name))
-            ? ' FK' : '';
-          diagram += `    ${col.type} ${col.name}${pkMark}${fkMark}\n`;
-        }
-      }
-      diagram += `  }\n`;
-    }
-
-    for (const rel of relations) {
-      // Asegurar que la tabla referenciada existe aunque no esté definida aún
-      if (!tables[rel.to]) {
-        diagram += `  ${rel.to} {\n    string id\n  }\n`;
-        tables[rel.to] = []; // evitar duplicados
-      }
-      diagram += `  ${rel.from} }o--|| ${rel.to} : "${rel.label}"\n`;
-    }
-
-    return diagram;
-  },
+  // buildMermaidFromWorkspace: eliminado — generaba string Mermaid desde bloques DDL,
+  //   reemplazado por updateDDLDiagram() que renderiza HTML cards directamente.
 
   resizeBlockly: function () {
     if (this.workspace) {
