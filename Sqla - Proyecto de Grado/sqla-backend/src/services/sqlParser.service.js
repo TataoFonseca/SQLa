@@ -83,6 +83,13 @@ export function parseSQL(sql, schemaName = null) {
         throw new Error("El SQL está vacío");
     }
 
+    //Error cuando no hay condicion ON en el bloque JOIN
+    if (/\/\*\s*condición ON requerida\s*\*\//i.test(cleanSQL)) {
+        throw new Error(
+            "El bloque JOIN no tiene condición ON. Conecta un bloque de comparación al conector ON del JOIN."
+        );
+    }
+
     const opt = { database: "TransactSQL" };
 
     let originalAST;

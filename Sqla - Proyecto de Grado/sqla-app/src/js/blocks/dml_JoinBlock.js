@@ -50,7 +50,32 @@ export const JOIN_GENERATOR = function (block, generator) {
         0  // ORDER_ATOMIC — las comparaciones no necesitan paréntesis extra
     );
 
-    // Si no hay condición conectada usamos placeholder para avisar al usuario
+    if (!onCondition) {
+        // ── Sin condición ON: colorear bloque de rojo
+        block.setColour('#c0392b');
+        // Mostrar aviso de error en el SQL Output
+        const sqlDiv = document.getElementById('sqlOutput');
+        if (sqlDiv) {
+            sqlDiv.style.display = 'block';
+            sqlDiv.innerHTML = `
+                <h2>Error en Bloque JOIN</h2>
+                <pre style="color:#ff5555;">
+⚠️ El bloque JOIN con la tabla '${joinTable}' no tiene condición ON.
+Conecta un bloque de comparación al conector ON del JOIN o has click izquierdo en el para añadirlo</pre>
+            `;
+        }
+
+    } else {
+        block.setColour(200);
+        // Limpiar el mensaje si ya tiene condición
+        const sqlDiv = document.getElementById('sqlOutput');
+        if (sqlDiv && sqlDiv.innerHTML.includes('no tiene condición ON')) {
+            sqlDiv.innerHTML = 'Solucionado';
+            sqlDiv.style.display = 'none';
+        }
+    }
+
+    // Si no hay condición conectada se manda un aviso al usuario
     const onPart = onCondition ? onCondition : '/* condición ON requerida */';
 
     const code = `${joinType} JOIN ${joinTable} ON ${onPart}\n`;
