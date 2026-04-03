@@ -31,36 +31,43 @@ function isInOrderByChain(block) {
     }
 }
 
+function addDirectionDropdown(block) {
+  const nextInput = block.getInput('NEXT');
+  if (!nextInput) return;
+  nextInput.appendField(
+    new Blockly.FieldDropdown([
+      ['ASC', 'ASC'],
+      ['DESC', 'DESC']
+    ]),
+    'DIRECTION'
+  );
+}
+
+function removeDirectionDropdown(block) {
+  const nextInput = block.getInput('NEXT');
+  if (nextInput && block.getField('DIRECTION')) {
+    nextInput.removeField('DIRECTION');
+  }
+}
+
 export function registerOrderByExpressionExtension() {
-    Blockly.Extensions.register('order_by_expression_extension', function () {
+  Blockly.Extensions.register('order_by_expression_extension', function () {
 
-        this.setOnChange(function (event) {
-            if (event.type !== Blockly.Events.BLOCK_MOVE &&
-                event.type !== Blockly.Events.BLOCK_CHANGE) return;
+    this.setOnChange(function (event) {
+      if (event.type !== Blockly.Events.BLOCK_MOVE &&
+          event.type !== Blockly.Events.BLOCK_CHANGE) return;
 
-            const inOrderBy = isInOrderByChain(this);
-            const hasDropdown = !!this.getField('DIRECTION');
+      const inOrderBy   = isInOrderByChain(this);
+      const hasDropdown = !!this.getField('DIRECTION');
 
-            if (inOrderBy && !hasDropdown) {
-                const nextInput = this.getInput('NEXT');
-                if (nextInput) {
-                    nextInput.insertFieldAt(1,
-                        new Blockly.FieldDropdown([
-                            ['ASC', 'ASC'],
-                            ['DESC', 'DESC']
-                        ]),
-                        'DIRECTION'
-                    );
-                }
-            }
+      if (inOrderBy && !hasDropdown) {
+        addDirectionDropdown(this);
+      }
 
-            if (!inOrderBy && hasDropdown) {
-                const nextInput = this.getInput('NEXT');
-                if (nextInput && this.getField('DIRECTION')) {
-                    nextInput.removeField('DIRECTION');
-                }
-            }
-        });
-
+      if (!inOrderBy && hasDropdown) {
+        removeDirectionDropdown(this);
+      }
     });
+
+  });
 }

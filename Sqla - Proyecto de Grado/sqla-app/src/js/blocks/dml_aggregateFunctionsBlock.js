@@ -9,87 +9,8 @@
 // Registrarlo en el generador de bloques en appController.js
 // ==========================================
 
-// export const AGGREGATE_FUNCTION_ONCHANGE = function(event) {
-  // if (event.type !== 'move' && event.type !== 'change') return;
-  // if (event.blockId !== this.id) return;
-
-  // // const nextInput = this.getInput('NEXT');
-  // if (!nextInput) return;
-
-  // // Detectar si está dentro de HAVING
-  // const parent = this.getParent();
-  // const grandParent = parent?.getParent();
-  // const isInHaving = 
-  //   parent?.type === 'sql_having' || 
-  //   grandParent?.type === 'sql_having';
-
-  // const isHavingVariant = this.type.endsWith('_having');
-
-  // // Ya está en la variante correcta
-  // if (isInHaving && isHavingVariant) return;
-  // if (!isInHaving && !isHavingVariant) {
-  //   // Coma dinámica normal
-  //   const nextInput = this.getInput('NEXT');
-  //   if (!nextInput) return;
-  //   const isConnected = nextInput.connection?.isConnected();
-  //   if (isConnected && !this.getField('COMMA')) {
-  //     nextInput.appendField(',', 'COMMA');
-  //   }
-  //   if (!isConnected && this.getField('COMMA')) {
-  //     nextInput.removeField('COMMA');
-  //   }
-  //   return;
-  // }
-
-  //   // Necesita reemplazo — guardar estado actual
-  // const column = this.getFieldValue('COLUMN') || 'columna';
-  // const distinctVisible = this.getField('DISTINCT')?.isVisible() ?? false;
-  // const currentColour = distinctVisible ? 230 : 120;
-
-  // // Determinar tipo destino
-  // const baseType = isHavingVariant
-  //   ? this.type.replace('_having', '')
-  //   : this.type + '_having';
-
-  // // Obtener conexión del padre para reconectar
-  // const outputConn = this.outputConnection;
-  // const parentConn = outputConn?.targetConnection ?? null;
-
-  // Blockly.Events.setGroup(true);
-  // try {
-  //   // Desconectar antes de disponer
-  //   if (parentConn) outputConn.disconnect();
-
-  //   // Disponer el bloque actual
-  //   this.dispose(false);
-
-  //   // Crear el nuevo bloque
-  //   const newBlock = this.workspace.newBlock(baseType);
-  //   newBlock.initSvg();
-  //   newBlock.render();
-
-  //   // Restaurar estado
-  //   newBlock.setFieldValue(column, 'COLUMN');
-  //   if (distinctVisible) {
-  //     newBlock.getField('DISTINCT').setVisible(true);
-  //     newBlock.setColour(currentColour);
-  //   }
-
-  //   // Reconectar al padre
-  //   if (parentConn) {
-  //     parentConn.connect(newBlock.outputConnection);
-  //   }
-
-  // } catch(e) {
-  //   console.error('Error al reemplazar bloque de agregación:', e);
-  // } finally {
-  //   Blockly.Events.setGroup(false);
-  // }
-
-// };
-
 export function createAggregateFunctionOnChange(Blockly) { //Cambió de AGGREGATE_FUNCTION_ONCHANGE a createAggregateFunctionOnChange, ahora es una función que recibe Blockly y devuelve el onChange handler, para evitar dependencias circulares con la extensión del menú contextual que también necesita este onChange para el soporte de coma dinámica en HAVING
-  return function(event) {
+  return function (event) {
     if (event.type !== 'move' && event.type !== 'change') return;
     if (event.blockId !== this.id) return;
 
@@ -155,7 +76,7 @@ export function createAggregateFunctionOnChange(Blockly) { //Cambió de AGGREGAT
           // Sin padre — posicionar donde estaba el bloque original
           newBlock.moveBy(position.x, position.y);
         }
-      } catch(e) {
+      } catch (e) {
         console.error('Error al reemplazar bloque de agregación:', e);
       } finally {
         Blockly.Events.setGroup(false);
@@ -173,17 +94,17 @@ function buildAggregateInit(Blockly, label, check, tooltip) {
   return {
     init: function () {
       this.appendValueInput('NEXT')
-          .setCheck(["Expression", "Column", "Aggregate", "DistinctExpression", "TopExpression"])
-          .appendField(label)
-          .appendField(
-            new Blockly.FieldLabel('DISTINCT'),
-            'DISTINCT'
-          )
-          .appendField(
-            new Blockly.FieldTextInput('columna'),
-            'COLUMN'
-          )
-          .appendField(')');
+        .setCheck(["Expression", "Column", "Aggregate", "DistinctExpression", "TopExpression"])
+        .appendField(label)
+        .appendField(
+          new Blockly.FieldLabel('DISTINCT'),
+          'DISTINCT'
+        )
+        .appendField(
+          new Blockly.FieldTextInput('columna'),
+          'COLUMN'
+        )
+        .appendField(')');
       this.setInputsInline(false);
       this.setOutput(true, ["Aggregate", "Expression"]);
       this.setColour(120);
@@ -194,6 +115,7 @@ function buildAggregateInit(Blockly, label, check, tooltip) {
       this.getField('DISTINCT').setVisible(false);
 
       Blockly.Extensions.apply('aggregate_functions_context_menu', this, false);
+      Blockly.Extensions.apply('order_by_expression_extension', this, false);
     }
   };
 }
@@ -205,10 +127,10 @@ function buildAggregateHavingInit(Blockly, label, tooltip) {
   return {
     init: function () {
       this.appendDummyInput('LABEL')
-          .appendField(label)
-          .appendField(new Blockly.FieldLabel('DISTINCT'), 'DISTINCT')
-          .appendField(new Blockly.FieldTextInput('columna'), 'COLUMN')
-          .appendField(')');
+        .appendField(label)
+        .appendField(new Blockly.FieldLabel('DISTINCT'), 'DISTINCT')
+        .appendField(new Blockly.FieldTextInput('columna'), 'COLUMN')
+        .appendField(')');
       this.setInputsInline(false);
       this.setOutput(true, ["Aggregate", "Expression"]);
       this.setColour(120);
@@ -230,21 +152,26 @@ function buildAggregateHavingInit(Blockly, label, tooltip) {
 export function aggregateFunction_Sum_BlockDefinition(Blockly) {
   return buildAggregateInit(
     Blockly,
-    'SUM(',["Expression", "Column", "DistinctExpression"],
+    'SUM(', ["Expression", "Column", "DistinctExpression"],
     'Suma de valores. Click derecho para agregar DISTINCT.'
   );
 
 }
 
-export const SUM_GENERATOR = function(block, generator) {
+export const SUM_GENERATOR = function (block, generator) {
   const distinct = block.getField('DISTINCT').isVisible() ? 'DISTINCT ' : '';
   const column = block.getFieldValue('COLUMN');
+  const direction = block.getFieldValue('DIRECTION');
   const next = generator.valueToCode(block, 'NEXT', generator.ORDER_ATOMIC);
-  const code = next
-    ? 'SUM(' +distinct + column + '), ' + next
-    : 'SUM(' +distinct + column + ')';
-  return [code, generator.ORDER_ATOMIC]; //cambiado de ORDER_FUNCTION_CALL a ORDER_ATOMIC para evitar paréntesis innecesarios en casos simples
-  
+  const self = direction
+    ? `SUM(${distinct}${column}) ${direction}`
+    : `SUM(${distinct}${column})`;
+  // const code = next
+  //   ? 'SUM(' +distinct + column + '), ' + next
+  //   : 'SUM(' +distinct + column + ')';
+  // return [code, generator.ORDER_ATOMIC]; //cambiado de ORDER_FUNCTION_CALL a ORDER_ATOMIC para evitar paréntesis innecesarios en casos simples
+  return [next ? `${self}, ${next}` : self, generator.ORDER_ATOMIC];
+
 };
 
 // ==========================================
@@ -259,15 +186,20 @@ export function aggregateFunction_Avg_BlockDefinition(Blockly) {
   );
 }
 
-export const AVG_GENERATOR = function(block, generator) {
+export const AVG_GENERATOR = function (block, generator) {
   const distinct = block.getField('DISTINCT').isVisible() ? 'DISTINCT ' : '';
   const column = block.getFieldValue('COLUMN');
+  const direction = block.getFieldValue('DIRECTION');
   const next = generator.valueToCode(block, 'NEXT', generator.ORDER_ATOMIC);
   // const code = next ? 'AVG(' + expression + '), ' + next : 'AVG(' + expression + ')';
-  const code = next
-    ? 'AVG(' + distinct + column + '), ' + next
-    : 'AVG(' + distinct + column + ')';
-  return [code, generator.ORDER_ATOMIC]; //cambiado de ORDER_FUNCTION_CALL a ORDER_ATOMIC para evitar paréntesis innecesarios en casos simples
+  // const code = next
+  //   ? 'AVG(' + distinct + column + '), ' + next
+  //   : 'AVG(' + distinct + column + ')';
+  // return [code, generator.ORDER_ATOMIC]; //cambiado de ORDER_FUNCTION_CALL a ORDER_ATOMIC para evitar paréntesis innecesarios en casos simples
+  const self = direction
+    ? `AVG(${distinct}${column}) ${direction}`
+    : `AVG(${distinct}${column})`;
+  return [next ? `${self}, ${next}` : self, generator.ORDER_ATOMIC];
 };
 
 // ==========================================
@@ -282,14 +214,19 @@ export function aggregateFunction_Count_BlockDefinition(Blockly) {
   );
 }
 
-export const COUNT_GENERATOR = function(block, generator) {
+export const COUNT_GENERATOR = function (block, generator) {
   const distinct = block.getField('DISTINCT').isVisible() ? 'DISTINCT ' : '';
   const column = block.getFieldValue('COLUMN');
+  const direction = block.getFieldValue('DIRECTION');
   const next = generator.valueToCode(block, 'NEXT', generator.ORDER_ATOMIC);
-  const code = next
-    ? 'COUNT(' + distinct + column + '), ' + next
-    : 'COUNT(' + distinct + column + ')';
-  return [code, generator.ORDER_ATOMIC]; //cambiado de ORDER_FUNCTION_CALL a ORDER_ATOMIC para evitar paréntesis innecesarios en casos simples
+  // const code = next
+  //   ? 'COUNT(' + distinct + column + '), ' + next
+  //   : 'COUNT(' + distinct + column + ')';
+  // return [code, generator.ORDER_ATOMIC]; //cambiado de ORDER_FUNCTION_CALL a ORDER_ATOMIC para evitar paréntesis innecesarios en casos simples
+  const self = direction
+    ? `COUNT(${distinct}${column}) ${direction}`
+    : `COUNT(${distinct}${column})`;
+  return [next ? `${self}, ${next}` : self, generator.ORDER_ATOMIC];
 };
 
 // ==========================================
@@ -305,13 +242,18 @@ export function aggregateFunction_Min_BlockDefinition(Blockly) {
 
 }
 
-export const MIN_GENERATOR = function(block, generator) {
+export const MIN_GENERATOR = function (block, generator) {
   const column = block.getFieldValue('COLUMN');
+  const direction = block.getFieldValue('DIRECTION');
   const next = generator.valueToCode(block, 'NEXT', generator.ORDER_ATOMIC);
-  const code = next
-    ? 'MIN(' + column + '), ' + next
-    : 'MIN(' + column + ')';
-  return [code, generator.ORDER_ATOMIC]; //cambiado de ORDER_FUNCTION_CALL a ORDER_ATOMIC para evitar paréntesis innecesarios en casos simples
+  // const code = next
+  //   ? 'MIN(' + column + '), ' + next
+  //   : 'MIN(' + column + ')';
+  // return [code, generator.ORDER_ATOMIC]; //cambiado de ORDER_FUNCTION_CALL a ORDER_ATOMIC para evitar paréntesis innecesarios en casos simples
+  const self = direction
+    ? `MIN(${column}) ${direction}`
+    : `MIN(${column})`;
+  return [next ? `${self}, ${next}` : self, generator.ORDER_ATOMIC];
 };
 
 // ==========================================
@@ -326,13 +268,18 @@ export function aggregateFunction_Max_BlockDefinition(Blockly) {
   );
 }
 
-export const MAX_GENERATOR = function(block, generator) {
+export const MAX_GENERATOR = function (block, generator) {
   const column = block.getFieldValue('COLUMN');
+  const direction = block.getFieldValue('DIRECTION');
   const next = generator.valueToCode(block, 'NEXT', generator.ORDER_ATOMIC);
-  const code = next
-    ? 'MAX(' + column + '), ' + next
-    : 'MAX(' + column + ')';
-  return [code, generator.ORDER_ATOMIC]; //cambiado de ORDER_FUNCTION_CALL a ORDER_ATOMIC para evitar paréntesis innecesarios en casos simples
+  // const code = next
+  //   ? 'MAX(' + column + '), ' + next
+  //   : 'MAX(' + column + ')';
+  // return [code, generator.ORDER_ATOMIC]; //cambiado de ORDER_FUNCTION_CALL a ORDER_ATOMIC para evitar paréntesis innecesarios en casos simples
+  const self = direction
+    ? `MAX(${column}) ${direction}`
+    : `MAX(${column})`;
+  return [next ? `${self}, ${next}` : self, generator.ORDER_ATOMIC];
 };
 
 // ==========================================
@@ -346,7 +293,7 @@ export function aggregateFunction_Sum_Having_BlockDefinition(Blockly) {
   );
 }
 
-export const SUM_HAVING_GENERATOR = function(block, generator) {
+export const SUM_HAVING_GENERATOR = function (block, generator) {
   const distinct = block.getField('DISTINCT').isVisible() ? 'DISTINCT ' : '';
   const column = block.getFieldValue('COLUMN') || '*';
   return ['SUM(' + distinct + column + ')', generator.ORDER_ATOMIC];
@@ -363,7 +310,7 @@ export function aggregateFunction_Avg_Having_BlockDefinition(Blockly) {
   );
 }
 
-export const AVG_HAVING_GENERATOR = function(block, generator) {
+export const AVG_HAVING_GENERATOR = function (block, generator) {
   const distinct = block.getField('DISTINCT').isVisible() ? 'DISTINCT ' : '';
   const column = block.getFieldValue('COLUMN') || '*';
   return ['AVG(' + distinct + column + ')', generator.ORDER_ATOMIC];
@@ -380,7 +327,7 @@ export function aggregateFunction_Count_Having_BlockDefinition(Blockly) {
   );
 }
 
-export const COUNT_HAVING_GENERATOR = function(block, generator) {
+export const COUNT_HAVING_GENERATOR = function (block, generator) {
   const distinct = block.getField('DISTINCT').isVisible() ? 'DISTINCT ' : '';
   const column = block.getFieldValue('COLUMN') || '*';
   return ['COUNT(' + distinct + column + ')', generator.ORDER_ATOMIC];
@@ -397,7 +344,7 @@ export function aggregateFunction_Min_Having_BlockDefinition(Blockly) {
   );
 }
 
-export const MIN_HAVING_GENERATOR = function(block, generator) {
+export const MIN_HAVING_GENERATOR = function (block, generator) {
   const column = block.getFieldValue('COLUMN') || '*';
   return ['MIN(' + column + ')', generator.ORDER_ATOMIC];
 };
@@ -413,7 +360,7 @@ export function aggregateFunction_Max_Having_BlockDefinition(Blockly) {
   );
 }
 
-export const MAX_HAVING_GENERATOR = function(block, generator) {
+export const MAX_HAVING_GENERATOR = function (block, generator) {
   const column = block.getFieldValue('COLUMN') || '*';
   return ['MAX(' + column + ')', generator.ORDER_ATOMIC];
 };
