@@ -308,7 +308,7 @@ function deduplicateSelectColumns(ast) {
  */
 export function transformSQL(sql, schemaName) {
     try {
-        const opt = { database: 'Postgresql' };
+        const opt = { database: 'TransactSQL' };
 
         console.log(' Transformando SQL:', sql);
         console.log(' Con schema:', schemaName);
