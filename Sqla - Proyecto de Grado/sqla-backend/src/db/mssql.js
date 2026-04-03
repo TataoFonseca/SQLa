@@ -14,9 +14,9 @@ const config = {
     server: process.env.DB_SERVER,
     database: process.env.DB_DATABASE,
     pool: {
-        max: 30,          // soporta alta concurrencia
-        min: 5,
-        idleTimeoutMillis: 30000
+        max: 30, // soporta alta concurrencia
+        min: 1,
+        idleTimeoutMillis: 300000   // 5 min — evita que conexiones idle se cierren entre consultas
     },
     options: {
         port: Number(process.env.DB_PORT) || 1433,  // puerto estático (fijado en SQL Server Config Manager)

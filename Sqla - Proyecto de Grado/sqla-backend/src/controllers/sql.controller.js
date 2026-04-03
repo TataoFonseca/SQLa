@@ -3,6 +3,7 @@ import { validateQuery } from "../services/queryValidator.js";
 import { executeSQL } from "../services/sqlExecutor.service.js";
 import { validateSession, updateLastUsed } from "../services/session.service.js";
 import { saveQuery, getQueriesBySession, getQueriesForExport } from "../services/project.service.js";
+// import { interpretSqlError } from "../services/errorInterpreter.service.js";
 
 export async function analyzeSQL(req, res) {
     try {
@@ -66,6 +67,7 @@ export async function analyzeSQL(req, res) {
         return res.status(500).json({
             ok: false,
             error: err.message
+            // error: interpretSqlError(err.message)
         });
     }
 }
