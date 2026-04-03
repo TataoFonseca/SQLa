@@ -20,7 +20,7 @@ export const GROUPBY_DEFINITION = {
   "helpUrl": ""
 };
 
-export const GROUPBY_GENERATOR = function(block, generator) {
+export const GROUPBY_GENERATOR = function (block, generator) {
   const columns = generator.valueToCode(block, 'COLUMNS', generator.ORDER_ATOMIC);
   if (!columns) return '';
   return 'GROUP BY ' + columns + '\n';
@@ -28,7 +28,7 @@ export const GROUPBY_GENERATOR = function(block, generator) {
 
 // onchange: al crearse el bloque en el workspace (no en el flyout),
 // auto-inserta un sql_groupby_column en el input COLUMNS
-export const GROUPBY_ONCHANGE = function(event) {
+export const GROUPBY_ONCHANGE = function (event) {
   // Solo reaccionar al evento de creación del bloque
   if (event.type !== 'create' || event.blockId !== this.id) return;
   // No actuar en el flyout/toolbox
