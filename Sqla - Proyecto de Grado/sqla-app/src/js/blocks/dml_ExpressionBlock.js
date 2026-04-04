@@ -1,10 +1,20 @@
-// // sqla-app/src/js/blocks/expressionBlock.js
-// // SOLO EXPORTA: La forma (JSON) y el generador (función)
-
-// MEJORADO: Con soporte para menú contextual de DISTINCT/TOP
-// Este bloque usa el patrón init en lugar de JSON puro porque appendField sobre input_value no es soportado en JSON block definitions, pero es necesario para necesario para fusionar, por eso se exporta la funcion expressionBlockDefinition, la cual se importa en appController.js y se usa para definir el bloque sql_expression, en lugar de usar un JSON puro. 
-// El campo COLUMN y el input NEXT conservan los mismos nombres — 
-// el generador y el menú contextual no necesitan cambios.
+// sqla-app/src/js/blocks/dml_ExpressionBlock.js
+//
+// Define el bloque sql_expression (columna simple encadenable).
+//
+// Usa el patrón init en lugar de JSON puro porque appendField sobre un
+// input_value no está soportado en las definiciones JSON de Blockly, y es
+// necesario para fusionar campos con la conexión de valor.
+//
+// Extensiones aplicadas en init:
+//   - order_by_expression_extension: detecta si el bloque está dentro de
+//     sql_order_by y, de ser así, añade dinámicamente el dropdown DIRECTION
+//     (ASC/DESC) al input NEXT. Ver orderByExpressionExtension.js.
+//
+// Lo que NO hace este bloque:
+//   - No aplica selectContextMenu, whereContextMenu ni havingExpressionContextMenu.
+//   - sql_expression_single es un bloque separado y no recibe ninguna de estas
+//     extensiones.
 
 export function expressionBlockDefinition(Blockly) {
   return {
@@ -17,22 +27,33 @@ export function expressionBlockDefinition(Blockly) {
       this.setColour(160);
       this.setTooltip('Nombre de columna. Click derecho para agregar DISTINCT o TOP');
       this.setHelpUrl('');
-      // Blockly.Extensions.apply('expression_context_menu', this, false); //Extension del menu contextual para agregar DISTINCT o TOP
-      Blockly.Extensions.apply('order_by_expression_extension', this, false); //Extension para poder insertarse dentro del bloque ORDER BY
+
+      // Habilita el dropdown ASC/DESC cuando el bloque se conecta a ORDER BY.
+      Blockly.Extensions.apply('order_by_expression_extension', this, false);
     }
   };
 }
 
 export const EXPRESSION_GENERATOR = function (block, generator) {
   const column = block.getFieldValue('COLUMN');
-  const direction = block.getFieldValue('DIRECTION'); //Agregado, este "DIRECTION" lo aporta la extensión orderByExpressionExtension y solo se mostrará si el bloque está conectado a un con sql_order_by
-  const next = generator.valueToCode(block, 'NEXT', generator.ORDER_ATOMIC); // Este "NEXT" lo aporta la extensión expressionContextMenu y solo mostrará las opciones DISTINCT o TOP si el bloque está conectado o es adyacente a un bloque sql_select
-  // const code = next ? column + ', ' + next : column;
-  const self = direction ? `${column} ${direction}` : column; 
+
+  // DIRECTION es inyectado por order_by_expression_extension únicamente cuando
+  // el bloque está dentro de sql_order_by. Si no existe, getFieldValue devuelve
+  // null y el bloque se comporta igual que antes.
+  const direction = block.getFieldValue('DIRECTION');
+
+  // NEXT encadena expresiones lateralmente (col1, col2, …).
+  const next = generator.valueToCode(block, 'NEXT', generator.ORDER_ATOMIC);
+
+  const self = direction ? `${column} ${direction}` : column;
   const code = next ? `${self}, ${next}` : self;
   return [code, generator.ORDER_ATOMIC];
 };
 
+// EXPRESSION_ONCHANGE gestiona únicamente la coma dinámica del input NEXT:
+// la añade cuando hay un bloque conectado y la quita cuando se desconecta.
+// El dropdown DIRECTION es gestionado completamente por order_by_expression_extension,
+// por lo que este handler no necesita saber nada del ORDER BY.
 export const EXPRESSION_ONCHANGE = function (event) {
   if (event.type !== 'move' && event.type !== 'change') return;
 
