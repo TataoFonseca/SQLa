@@ -1267,8 +1267,13 @@ export const AppController = {
 
     cy.on('viewport layoutstop', updatePositions);
     cy.on('drag', 'node', updatePositions);
-    // Primera posición tras layout
-    cy.one('layoutstop', updatePositions);
+    // Al primer layoutstop: forzar resize + fit para que Cytoscape re-mida el contenedor
+    // con sus dimensiones reales (en el momento de construcción puede estar en 0×0).
+    cy.one('layoutstop', () => {
+      cy.resize();
+      cy.fit(40);
+      updatePositions();
+    });
 
     this._cytoscapeInstance = cy;
     this._cardEls = cardEls;
