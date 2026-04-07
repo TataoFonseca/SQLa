@@ -77,7 +77,7 @@ import { registerAggregateFunctionContextMenu } from '../blocks/extensions/aggre
 import { GROUPBY_DEFINITION, GROUPBY_GENERATOR, GROUPBY_ONCHANGE } from '../blocks/dml_GroupByBlock.js';
 import { GROUPBY_COLUMN_DEFINITION, GROUPBY_COLUMN_GENERATOR, GROUPBY_COLUMN_ONCHANGE } from '../blocks/dml_GroupByColumnBlock.js';
 
-import { HAVING_DEFINITION, HAVING_GENERATOR } from '../blocks/dml_HavingBlock.js';
+import { HAVING_DEFINITION, HAVING_GENERATOR, HAVING_ONCHANGE } from '../blocks/dml_HavingBlock.js';
 
 // EXTENSIÓN PARA MENU CONTEXTUAL DE EXPRESIONES EN HAVING
 import { registerHavingExpressionContextMenu } from '../blocks/extensions/havingExpressionContextMenu.js';
@@ -175,9 +175,6 @@ export const AppController = {
       DISTINCT_DEFINITION,
       TOP_DEFINITION,
 
-      // DML: HAVING
-      HAVING_DEFINITION,
-
       // DML: EXPRESSION SINGLE
       EXPRESSION_SINGLE_DEFINITION,
 
@@ -191,6 +188,12 @@ export const AppController = {
     //============== Bloques con onchange, estos bloques requieren lógica adicional en el menú contextual o generación de código, se registran manualmente con Blockly.Blocks
 
     Blockly.Blocks['sql_select'] = selectBlockDefinition(Blockly);
+
+    // DML: HAVING — registro manual para incluir onchange de auto-transformación Expression → ExpressionSingle
+    Blockly.Blocks['sql_having'] = {
+      init: function () { this.jsonInit(HAVING_DEFINITION); },
+      onchange: HAVING_ONCHANGE
+    };
 
     // DML: FROM (con y sin JOINs) — registro manual para incluir onchange de auto-attach SELECT
     Blockly.Blocks['sql_from_simple'] = {
@@ -807,11 +810,11 @@ export const AppController = {
         : ''
       }
       </h2>
-      ${contentHTML}
-      <details style="margin-top: 12px; cursor: pointer;">
+      <details style="margin-top: 1px; cursor: pointer;">
         <summary style="color: rgba(255,255,255,0.4); font-size: 0.8rem;">Ver SQL transformado enviado al servidor</summary>
         <pre style="color: #888; font-size: 0.8rem; margin-top: 6px;">${transformedSQL || originalSQL}</pre>
       </details>
+      ${contentHTML}
     `;
 
     // updateMermaidFromAST: eliminado — el tab DML pasó a renderERD(chinookSchema) con Cytoscape
@@ -1039,17 +1042,17 @@ export const AppController = {
         // Posiciones manuales para replicar el layout de la imagen de referencia de Chinook.
         // Coordenadas = centro del nodo. Con fit:true Cytoscape hace zoom para encajarlo todo.
         positions: {
-          Artist:        { x: 120,  y: 40  },
-          Album:         { x: 370,  y: 50  },
-          Track:         { x: 630,  y: 120 },
-          MediaType:     { x: 900,  y: 40  },
-          Genre:         { x: 900,  y: 220 },
-          Playlist:      { x: 120,  y: 320 },
-          PlaylistTrack: { x: 370,  y: 320 },
-          Employee:      { x: 120,  y: 580 },
-          Customer:      { x: 390,  y: 560 },
-          InvoiceLine:   { x: 660,  y: 430 },
-          Invoice:       { x: 900,  y: 510 },
+          Artist: { x: 120, y: 40 },
+          Album: { x: 370, y: 50 },
+          Track: { x: 630, y: 120 },
+          MediaType: { x: 900, y: 40 },
+          Genre: { x: 900, y: 220 },
+          Playlist: { x: 120, y: 320 },
+          PlaylistTrack: { x: 370, y: 320 },
+          Employee: { x: 120, y: 580 },
+          Customer: { x: 390, y: 560 },
+          InvoiceLine: { x: 660, y: 430 },
+          Invoice: { x: 900, y: 510 },
         },
       },
       userZoomingEnabled: true,

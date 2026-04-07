@@ -1,6 +1,6 @@
 // sqla-app/src/js/blocks/dml_ExpressionBlock.js
 //
-// Define el bloque sql_expression (columna simple encadenable).
+// Define el bloque sql_expression (columna o expresión encadenable).
 //
 // Usa el patrón init en lugar de JSON puro porque appendField sobre un
 // input_value no está soportado en las definiciones JSON de Blockly, y es
@@ -10,6 +10,10 @@
 //   - order_by_expression_extension: detecta si el bloque está dentro de
 //     sql_order_by y, de ser así, añade dinámicamente el dropdown DIRECTION
 //     (ASC/DESC) al input NEXT. Ver orderByExpressionExtension.js.
+//
+// Comportamiento especial dentro de HAVING (gestionado por HAVING_ONCHANGE en dml_HavingBlock.js):
+//   Cuando sql_expression se conecta directamente al input de sql_having, HAVING
+//   lo transforma automáticamente en sql_expression_single.
 //
 // Lo que NO hace este bloque:
 //   - No aplica selectContextMenu, whereContextMenu ni havingExpressionContextMenu.
@@ -52,8 +56,9 @@ export const EXPRESSION_GENERATOR = function (block, generator) {
 
 // EXPRESSION_ONCHANGE gestiona únicamente la coma dinámica del input NEXT:
 // la añade cuando hay un bloque conectado y la quita cuando se desconecta.
-// El dropdown DIRECTION es gestionado completamente por order_by_expression_extension,
-// por lo que este handler no necesita saber nada del ORDER BY.
+// El dropdown DIRECTION es gestionado completamente por order_by_expression_extension.
+// La transformación a sql_expression_single al entrar en HAVING es responsabilidad
+// de HAVING_ONCHANGE (dml_HavingBlock.js), que detecta la conexión en su propio input.
 export const EXPRESSION_ONCHANGE = function (event) {
   if (event.type !== 'move' && event.type !== 'change') return;
 
