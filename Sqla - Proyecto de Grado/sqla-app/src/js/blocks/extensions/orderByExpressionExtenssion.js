@@ -1,17 +1,11 @@
 // sqla-app/src/js/blocks/extensions/orderByExpressionExtension.js
 //
 // Extensión 'order_by_expression_extension' compartida por sql_expression y
-// todos los aggregate blocks normales (SUM, AVG, COUNT, MIN, MAX).
+// todos los aggregateFunctionblock normales (SUM, AVG, COUNT, MIN, MAX).
 //
-// Responsabilidad: detectar en tiempo de ejecución si el bloque está conectado
-// (directamente o a través de una cadena de expresiones) a un sql_order_by y,
-// según el resultado, mostrar u ocultar el dropdown DIRECTION (ASC/DESC) en el
-// input NEXT del propio bloque.
+// Responsabilidad: detectar en tiempo de ejecución si el bloque está conectado (directamente o a través de una cadena de expresiones) a un sql_order_by y, según el resultado, mostrar u ocultar el dropdown DIRECTION (ASC/DESC) en el input NEXT del propio bloque.
 //
-// La extensión se aplica en el init de cada bloque (vía Blockly.Extensions.apply)
-// y no requiere ninguna lógica adicional en el generador: los generadores
-// simplemente leen block.getFieldValue('DIRECTION') y, si existe, lo anexan al
-// código generado.
+// La extensión se aplica en el init de cada bloque (vía Blockly.Extensions.apply) y no requiere ninguna lógica adicional en el generador: los generadores simplemente leen block.getFieldValue('DIRECTION') y, si existe, lo anexan al código generado.
 //
 // Lo que NO hace esta extensión:
 //   - No afecta a las variantes _having de los aggregates (no se les aplica).
@@ -34,20 +28,20 @@ import * as Blockly from 'blockly';
 // la cadena de expresiones de valor, nunca las conexiones de statement.
 
 function isInOrderByChain(block) {
-    let current = block;
-    while (true) {
-        // Si el bloque no está conectado como valor a ningún padre, terminamos.
-        if (!current.outputConnection?.targetConnection) return false;
+  let current = block;
+  while (true) {
+    // Si el bloque no está conectado como valor a ningún padre, terminamos.
+    if (!current.outputConnection?.targetConnection) return false;
 
-        const parent = current.outputConnection.targetConnection.getSourceBlock();
-        if (!parent) return false;
+    const parent = current.outputConnection.targetConnection.getSourceBlock();
+    if (!parent) return false;
 
-        // Encontramos el ORDER BY: el bloque sí pertenece a la cadena.
-        if (parent.type === 'sql_order_by') return true;
+    // Encontramos el ORDER BY: el bloque sí pertenece a la cadena.
+    if (parent.type === 'sql_order_by') return true;
 
-        // El padre es otra expresión encadenada; seguir subiendo.
-        current = parent;
-    }
+    // El padre es otra expresión encadenada; seguir subiendo.
+    current = parent;
+  }
 }
 
 // ─── Gestión del dropdown DIRECTION ──────────────────────────────────────────
@@ -88,9 +82,9 @@ export function registerOrderByExpressionExtension() {
 
     this.setOnChange(function (event) {
       if (event.type !== Blockly.Events.BLOCK_MOVE &&
-          event.type !== Blockly.Events.BLOCK_CHANGE) return;
+        event.type !== Blockly.Events.BLOCK_CHANGE) return;
 
-      const inOrderBy   = isInOrderByChain(this);
+      const inOrderBy = isInOrderByChain(this);
       const hasDropdown = !!this.getField('DIRECTION');
 
       if (inOrderBy && !hasDropdown) {

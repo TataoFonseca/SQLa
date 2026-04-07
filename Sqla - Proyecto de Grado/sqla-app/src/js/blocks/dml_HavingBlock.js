@@ -1,4 +1,7 @@
 // sqla-app/src/js/blocks/dml_HavingBlock.js
+// [Orden de cláusulas DML]
+// previousStatement: "SQL_AFTER_GROUPBY" → HAVING solo puede ir después de GROUP BY
+// nextStatement:     "SQL_AFTER_HAVING"  → después de HAVING: ORDER BY
 
 export const HAVING_DEFINITION = {
   "type": "sql_having",
@@ -11,8 +14,8 @@ export const HAVING_DEFINITION = {
     }
   ],
   "inputsInline": true,
-  "previousStatement": "SQL_STATEMENT",
-  "nextStatement": "SQL_STATEMENT",
+  "previousStatement": "SQL_AFTER_GROUPBY",
+  "nextStatement": "SQL_AFTER_HAVING",
   "colour": 200,
   "tooltip": "Filtra grupos después del GROUP BY. Conecta una Expression o función de agregación.",
   "helpUrl": ""

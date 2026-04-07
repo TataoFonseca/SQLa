@@ -1,4 +1,8 @@
 // sqla-app/src/js/blocks/dml_OrderByBlock.js
+// [Orden de cláusulas DML]
+// previousStatement: ["SQL_AFTER_FROM", "SQL_AFTER_WHERE", "SQL_AFTER_GROUPBY", "SQL_AFTER_HAVING"]
+//   → ORDER BY puede ir después de FROM, WHERE, GROUP BY o HAVING
+// nextStatement: (ninguno) → ORDER BY es la cláusula final, no acepta bloques debajo
 
 export const ORDER_BY_DEFINITION = {
   "type": "sql_order_by",
@@ -11,8 +15,7 @@ export const ORDER_BY_DEFINITION = {
     }
   ],
   "inputsInline": true,
-  "previousStatement": "SQL_STATEMENT",
-  "nextStatement": "SQL_STATEMENT",
+  "previousStatement": ["SQL_AFTER_FROM", "SQL_AFTER_WHERE", "SQL_AFTER_GROUPBY", "SQL_AFTER_HAVING"],
   "colour": 230,
   "tooltip": "Ordena los resultados. Conecta una o más expresiones de orden.",
   "helpUrl": ""

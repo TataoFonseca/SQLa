@@ -30,7 +30,7 @@ import {
 import { selectBlockDefinition, SELECT_GENERATOR, } from '../blocks/dml_SelectBlock.js';
 
 import { FROM_SIMPLE_DEFINITION, FROM_SIMPLE_GENERATOR } from '../blocks/dml_FromSimpleBlock.js'; // (Agregado) FROM simple sin soporte de JOINs (FromSimpleBlock.js)
-import { FROM_DEFINITION, FROM_GENERATOR } from '../blocks/dml_FromBlock.js'; // FROM con soporte de JOINs (FromBlock.js)
+import { FROM_DEFINITION, FROM_GENERATOR, FROM_ONCHANGE } from '../blocks/dml_FromBlock.js'; // FROM con soporte de JOINs (FromBlock.js)
 
 import { WHERE_DEFINITION, WHERE_GENERATOR } from '../blocks/dml_WhereBlock.js';
 import { registerWhereContextMenu } from '../blocks/extensions/whereContextMenu.js';
@@ -169,8 +169,6 @@ export const AppController = {
       // DML
       // SELECT_DEFINITION, //Eliminado, estructura cambiada a init, para ser compatible con Extensiones 
       WHERE_DEFINITION, //Agregado WHERE (WhereBlock.js)
-      FROM_SIMPLE_DEFINITION, //Agregado FROM simple sin soporte de JOINs
-      FROM_DEFINITION,
 
 
       // DML: DISTINCT Y TOP
@@ -193,6 +191,16 @@ export const AppController = {
     //============== Bloques con onchange, estos bloques requieren lógica adicional en el menú contextual o generación de código, se registran manualmente con Blockly.Blocks
 
     Blockly.Blocks['sql_select'] = selectBlockDefinition(Blockly);
+
+    // DML: FROM (con y sin JOINs) — registro manual para incluir onchange de auto-attach SELECT
+    Blockly.Blocks['sql_from_simple'] = {
+      init: function () { this.jsonInit(FROM_SIMPLE_DEFINITION); },
+      onchange: FROM_ONCHANGE
+    };
+    Blockly.Blocks['sql_from'] = {
+      init: function () { this.jsonInit(FROM_DEFINITION); },
+      onchange: FROM_ONCHANGE
+    };
 
     // DDL: PRIMARY KEY (bloque de constraint para columna primaria)
     Blockly.Blocks['sql_column_primary_key'] = columnPrimaryKeyBlockInit(Blockly);

@@ -1,6 +1,10 @@
 // sqla-app/src/js/blocks/dml_GroupByBlock.js
 // Bloque GROUP BY — Statement (puzzle), acepta GroupByColumn en su input COLUMNS
 // Al crearse, auto-inserta un bloque sql_groupby_column como starter
+//
+// [Orden de cláusulas DML]
+// previousStatement: ["SQL_AFTER_FROM", "SQL_AFTER_WHERE"] → GROUP BY puede ir después de FROM o WHERE
+// nextStatement:     "SQL_AFTER_GROUPBY"                   → después de GROUP BY: HAVING u ORDER BY
 
 export const GROUPBY_DEFINITION = {
   "type": "sql_group_by",
@@ -13,8 +17,8 @@ export const GROUPBY_DEFINITION = {
     }
   ],
   "inputsInline": true,
-  "previousStatement": "SQL_STATEMENT",
-  "nextStatement": "SQL_STATEMENT",
+  "previousStatement": ["SQL_AFTER_FROM", "SQL_AFTER_WHERE"],
+  "nextStatement": "SQL_AFTER_GROUPBY",
   "colour": 200,
   "tooltip": "Agrupa los resultados por una o más columnas.",
   "helpUrl": ""

@@ -1,4 +1,7 @@
 // sqla-app/src/js/blocks/dml_WhereBlock.js
+// [Orden de cláusulas DML]
+// previousStatement: "SQL_AFTER_FROM"  → WHERE solo puede ir después de FROM
+// nextStatement:     "SQL_AFTER_WHERE" → después de WHERE: GROUP BY u ORDER BY
 
 export const WHERE_DEFINITION = {
   "type": "sql_where",
@@ -11,8 +14,8 @@ export const WHERE_DEFINITION = {
     }
   ],
   "inputsInline": true,
-  "previousStatement": "SQL_STATEMENT",
-  "nextStatement": "SQL_STATEMENT",
+  "previousStatement": "SQL_AFTER_FROM",
+  "nextStatement": "SQL_AFTER_WHERE",
   "colour": 30,
   "tooltip": "Filtra filas. Click derecho para agregar una condición.",
   "helpUrl": "",

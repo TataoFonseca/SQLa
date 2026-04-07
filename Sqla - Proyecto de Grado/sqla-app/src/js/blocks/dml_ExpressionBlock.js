@@ -21,11 +21,11 @@ export function expressionBlockDefinition(Blockly) {
     init: function () {
       this.appendValueInput('NEXT')
         .setCheck(["Expression", "Column", "Aggregate", "DistinctExpression", "TopExpression"])
-        .appendField(new Blockly.FieldTextInput('column_name'), 'COLUMN');
+        .appendField(new Blockly.FieldTextInput('columna'), 'COLUMN');
       this.setInputsInline(false);
       this.setOutput(true, ["Expression", "Column"]);
       this.setColour(160);
-      this.setTooltip('Nombre de columna. Click derecho para agregar DISTINCT o TOP');
+      this.setTooltip('Nombre de columna. Click derecho en SELECT para ver los modificadores disponibles');
       this.setHelpUrl('');
 
       // Habilita el dropdown ASC/DESC cuando el bloque se conecta a ORDER BY.
