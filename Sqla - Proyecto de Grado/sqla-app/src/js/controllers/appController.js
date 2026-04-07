@@ -403,6 +403,7 @@ export const AppController = {
       return GROUPBY_COLUMN_GENERATOR(block, javascriptGenerator);
     };
 
+
     javascriptGenerator.forBlock['sql_having'] = function (block) {
       return HAVING_GENERATOR(block, javascriptGenerator);
     };
@@ -484,7 +485,7 @@ export const AppController = {
         const toolbox = this.workspace.getToolbox();
 
         const dmlItem = toolbox.getToolboxItems().find(item =>
-          item.getName?.() === 'Sentencias DML'
+          item.getName?.() === 'Consultar a Base de datos'
         );
 
         const dmlDiv = dmlItem?.getDiv?.();

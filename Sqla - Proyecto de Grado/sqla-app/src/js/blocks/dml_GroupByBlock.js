@@ -33,18 +33,14 @@ export const GROUPBY_GENERATOR = function (block, generator) {
 // onchange: al crearse el bloque en el workspace (no en el flyout),
 // auto-inserta un sql_groupby_column en el input COLUMNS
 export const GROUPBY_ONCHANGE = function (event) {
-  // Solo reaccionar al evento de creación del bloque
   if (event.type !== 'create' || event.blockId !== this.id) return;
-  // No actuar en el flyout/toolbox
   if (this.workspace.isFlyout) return;
-  // Si ya tiene algo conectado, no hacer nada
+
   const columnsInput = this.getInput('COLUMNS');
   if (!columnsInput || columnsInput.connection.isConnected()) return;
 
-  // Crear y conectar el bloque starter
   const starterBlock = this.workspace.newBlock('sql_groupby_column');
   starterBlock.initSvg();
   starterBlock.render();
-
   columnsInput.connection.connect(starterBlock.outputConnection);
 };
