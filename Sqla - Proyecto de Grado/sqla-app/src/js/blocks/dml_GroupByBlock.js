@@ -1,6 +1,10 @@
 // sqla-app/src/js/blocks/dml_GroupByBlock.js
 // Bloque GROUP BY — Statement (puzzle), acepta GroupByColumn en su input COLUMNS
 // Al crearse, auto-inserta un bloque sql_groupby_column como starter
+//
+// [Orden de cláusulas DML]
+// previousStatement: ["SQL_AFTER_FROM", "SQL_AFTER_WHERE"] → GROUP BY puede ir después de FROM o WHERE
+// nextStatement:     "SQL_AFTER_GROUPBY"                   → después de GROUP BY: HAVING u ORDER BY
 
 export const GROUPBY_DEFINITION = {
   "type": "sql_group_by",
@@ -13,8 +17,8 @@ export const GROUPBY_DEFINITION = {
     }
   ],
   "inputsInline": true,
-  "previousStatement": "SQL_STATEMENT",
-  "nextStatement": "SQL_STATEMENT",
+  "previousStatement": ["SQL_AFTER_FROM", "SQL_AFTER_WHERE"],
+  "nextStatement": "SQL_AFTER_GROUPBY",
   "colour": 200,
   "tooltip": "Agrupa los resultados por una o más columnas.",
   "helpUrl": ""
@@ -29,18 +33,14 @@ export const GROUPBY_GENERATOR = function (block, generator) {
 // onchange: al crearse el bloque en el workspace (no en el flyout),
 // auto-inserta un sql_groupby_column en el input COLUMNS
 export const GROUPBY_ONCHANGE = function (event) {
-  // Solo reaccionar al evento de creación del bloque
   if (event.type !== 'create' || event.blockId !== this.id) return;
-  // No actuar en el flyout/toolbox
   if (this.workspace.isFlyout) return;
-  // Si ya tiene algo conectado, no hacer nada
+
   const columnsInput = this.getInput('COLUMNS');
   if (!columnsInput || columnsInput.connection.isConnected()) return;
 
-  // Crear y conectar el bloque starter
   const starterBlock = this.workspace.newBlock('sql_groupby_column');
   starterBlock.initSvg();
   starterBlock.render();
-
   columnsInput.connection.connect(starterBlock.outputConnection);
 };

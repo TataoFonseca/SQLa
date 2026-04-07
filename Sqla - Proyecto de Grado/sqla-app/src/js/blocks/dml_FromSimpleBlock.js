@@ -1,6 +1,15 @@
 // sqla-app/src/js/blocks/dml_FromSimpleBlock.js
 // FROM simple — sin soporte de JOINs, creado en base a la primera version de dml_FromBlock.js que fue modificado para dar soporte a clausulas/bloques JOIN.
 // Click derecho → "Add JOIN clause" reemplaza este bloque por sql_from_joins.
+//
+// [Orden de cláusulas DML]
+// previousStatement: "SQL_AFTER_SELECT" → FROM solo puede ir después de SELECT
+// nextStatement:     "SQL_AFTER_FROM"   → después de FROM: WHERE, GROUP BY u ORDER BY
+//
+// [Auto-attach SELECT]
+// FROM_ONCHANGE se reutiliza desde dml_FromBlock.js (mismo comportamiento).
+// Se re-exporta aquí para que appController pueda importarlo desde este archivo si lo necesita.
+export { FROM_ONCHANGE } from './dml_FromBlock.js';
 
 export const FROM_SIMPLE_DEFINITION = {
     "type": "sql_from_simple",
@@ -12,8 +21,8 @@ export const FROM_SIMPLE_DEFINITION = {
             "text": "mi_tabla"
         }
     ],
-    "previousStatement": "SQL_STATEMENT",
-    "nextStatement": "SQL_STATEMENT",
+    "previousStatement": "SQL_AFTER_SELECT",
+    "nextStatement": "SQL_AFTER_FROM",
     "colour": 160,
     "tooltip": "Tabla de origen. Click derecho para añadir JOINs.",
     "helpUrl": "",

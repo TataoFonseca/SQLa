@@ -30,7 +30,7 @@ import {
 import { selectBlockDefinition, SELECT_GENERATOR, } from '../blocks/dml_SelectBlock.js';
 
 import { FROM_SIMPLE_DEFINITION, FROM_SIMPLE_GENERATOR } from '../blocks/dml_FromSimpleBlock.js'; // (Agregado) FROM simple sin soporte de JOINs (FromSimpleBlock.js)
-import { FROM_DEFINITION, FROM_GENERATOR } from '../blocks/dml_FromBlock.js'; // FROM con soporte de JOINs (FromBlock.js)
+import { FROM_DEFINITION, FROM_GENERATOR, FROM_ONCHANGE } from '../blocks/dml_FromBlock.js'; // FROM con soporte de JOINs (FromBlock.js)
 
 import { WHERE_DEFINITION, WHERE_GENERATOR } from '../blocks/dml_WhereBlock.js';
 import { registerWhereContextMenu } from '../blocks/extensions/whereContextMenu.js';
@@ -77,7 +77,7 @@ import { registerAggregateFunctionContextMenu } from '../blocks/extensions/aggre
 import { GROUPBY_DEFINITION, GROUPBY_GENERATOR, GROUPBY_ONCHANGE } from '../blocks/dml_GroupByBlock.js';
 import { GROUPBY_COLUMN_DEFINITION, GROUPBY_COLUMN_GENERATOR, GROUPBY_COLUMN_ONCHANGE } from '../blocks/dml_GroupByColumnBlock.js';
 
-import { HAVING_DEFINITION, HAVING_GENERATOR } from '../blocks/dml_HavingBlock.js';
+import { HAVING_DEFINITION, HAVING_GENERATOR, HAVING_ONCHANGE } from '../blocks/dml_HavingBlock.js';
 
 // EXTENSIÓN PARA MENU CONTEXTUAL DE EXPRESIONES EN HAVING
 import { registerHavingExpressionContextMenu } from '../blocks/extensions/havingExpressionContextMenu.js';
@@ -169,16 +169,11 @@ export const AppController = {
       // DML
       // SELECT_DEFINITION, //Eliminado, estructura cambiada a init, para ser compatible con Extensiones 
       WHERE_DEFINITION, //Agregado WHERE (WhereBlock.js)
-      FROM_SIMPLE_DEFINITION, //Agregado FROM simple sin soporte de JOINs
-      FROM_DEFINITION,
 
 
       // DML: DISTINCT Y TOP
       DISTINCT_DEFINITION,
       TOP_DEFINITION,
-
-      // DML: HAVING
-      HAVING_DEFINITION,
 
       // DML: EXPRESSION SINGLE
       EXPRESSION_SINGLE_DEFINITION,
@@ -193,6 +188,22 @@ export const AppController = {
     //============== Bloques con onchange, estos bloques requieren lógica adicional en el menú contextual o generación de código, se registran manualmente con Blockly.Blocks
 
     Blockly.Blocks['sql_select'] = selectBlockDefinition(Blockly);
+
+    // DML: HAVING — registro manual para incluir onchange de auto-transformación Expression → ExpressionSingle
+    Blockly.Blocks['sql_having'] = {
+      init: function () { this.jsonInit(HAVING_DEFINITION); },
+      onchange: HAVING_ONCHANGE
+    };
+
+    // DML: FROM (con y sin JOINs) — registro manual para incluir onchange de auto-attach SELECT
+    Blockly.Blocks['sql_from_simple'] = {
+      init: function () { this.jsonInit(FROM_SIMPLE_DEFINITION); },
+      onchange: FROM_ONCHANGE
+    };
+    Blockly.Blocks['sql_from'] = {
+      init: function () { this.jsonInit(FROM_DEFINITION); },
+      onchange: FROM_ONCHANGE
+    };
 
     // DDL: PRIMARY KEY (bloque de constraint para columna primaria)
     Blockly.Blocks['sql_column_primary_key'] = columnPrimaryKeyBlockInit(Blockly);
@@ -392,6 +403,7 @@ export const AppController = {
       return GROUPBY_COLUMN_GENERATOR(block, javascriptGenerator);
     };
 
+
     javascriptGenerator.forBlock['sql_having'] = function (block) {
       return HAVING_GENERATOR(block, javascriptGenerator);
     };
@@ -473,7 +485,7 @@ export const AppController = {
         const toolbox = this.workspace.getToolbox();
 
         const dmlItem = toolbox.getToolboxItems().find(item =>
-          item.getName?.() === 'Sentencias DML'
+          item.getName?.() === 'Consultar a Base de datos'
         );
 
         const dmlDiv = dmlItem?.getDiv?.();
@@ -978,11 +990,11 @@ export const AppController = {
         : ''
       }
       </h2>
-      ${contentHTML}
-      <details style="margin-top: 12px; cursor: pointer;">
+      <details style="margin-top: 1px; cursor: pointer;">
         <summary style="color: rgba(255,255,255,0.4); font-size: 0.8rem;">Ver SQL transformado enviado al servidor</summary>
         <pre style="color: #888; font-size: 0.8rem; margin-top: 6px;">${transformedSQL || originalSQL}</pre>
       </details>
+      ${contentHTML}
     `;
 
     // updateMermaidFromAST: eliminado — el tab DML pasó a renderERD(chinookSchema) con Cytoscape

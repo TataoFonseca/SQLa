@@ -1,7 +1,11 @@
 // sqla-app/src/js/blocks/dml_selectBlock.js
-// SOLO EXPORTA: La forma (JSON) y el generador (función)
-
-// cambió de  SELECT_DEFINITION a selectBlockDefinition para poder usar init y hacerlo compatible con la extensión selectContextMenu
+// SOLO EXPORTA: La forma (función init) y el generador
+//
+// [Orden de cláusulas DML]
+// previousStatement: false              → SELECT es bloque raíz, no tiene predecesor
+// nextStatement:     "SQL_AFTER_SELECT" → después de SELECT solo puede ir FROM
+//
+// cambió de SELECT_DEFINITION a selectBlockDefinition para poder usar init y hacerlo compatible con la extensión selectContextMenu
 export function selectBlockDefinition(Blockly) {
   return {
     init: function () {
@@ -9,8 +13,8 @@ export function selectBlockDefinition(Blockly) {
         .setCheck(['Expression', 'Column', 'Aggregate', 'DistinctFlag', 'TopFlag'])
         .appendField('SELECT');
       this.setInputsInline(false);
-      this.setPreviousStatement(true, 'SQL_STATEMENT');
-      this.setNextStatement(true, 'SQL_STATEMENT');
+      this.setPreviousStatement(false);
+      this.setNextStatement(true, 'SQL_AFTER_SELECT');
       this.setColour(160);
       this.setTooltip('Instrucción SELECT. Click derecho para agregar DISTINCT o TOP');
       this.setHelpUrl('');

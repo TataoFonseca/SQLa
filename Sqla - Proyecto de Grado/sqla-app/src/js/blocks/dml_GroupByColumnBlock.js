@@ -1,7 +1,8 @@
 // sqla-app/src/js/blocks/dml_GroupByColumnBlock.js
 // ColumnExpression exclusivo para GROUP BY
 // - Output type: "GroupByColumn" (evita mezcla con sql_expression)
-// - NEXT acepta otro GroupByColumn (cadena de columnas)
+// - NEXT acepta GroupByColumn, Expression o Column para poder encadenar
+//   sql_expression directamente sin desplazar el bloque ya conectado a COLUMNS
 // - Coma dinámica igual que sql_expression (EXPRESSION_ONCHANGE)
 // - Sin menú contextual de DISTINCT/TOP
 
@@ -12,18 +13,18 @@ export const GROUPBY_COLUMN_DEFINITION = {
     {
       "type": "field_input",
       "name": "COLUMN",
-      "text": "column_name"
+      "text": "columna_a_agrupar"
     },
     {
       "type": "input_value",
       "name": "NEXT",
-      "check": ["GroupByColumn"]
+      "check": ["GroupByColumn", "Expression", "Column"]
     }
   ],
   "inputsInline": false,
   "output": ["GroupByColumn"],
   "colour": 200,
-  "tooltip": "Columna para agrupar. Conecta otro bloque en NEXT para agregar más columnas.",
+  "tooltip": "Columna para agrupar si existen funciones de agregación en SELECT",
   "helpUrl": ""
 };
 
