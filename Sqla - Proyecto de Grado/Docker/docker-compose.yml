@@ -39,8 +39,8 @@ services:
       dockerfile: Docker/frontend.Dockerfile
     container_name: sqla-frontend
     ports:
-      # - "80:80"
-      - "8080:80" # Descomentar si el puerto 80 está en uso por otro servicio
+      - "80:80"
+      # - "8080:80" # Descomentar si el puerto 80 está en uso por otro servicio
     depends_on:
       - backend
 
