@@ -18,7 +18,7 @@ body {
   padding: 10px;
   overflow: hidden;
   padding-top: 45px;
-  padding-bottom: 50px;
+  padding-bottom: 40px;
 }
 
 /* HEADER (solo logo) */
@@ -286,7 +286,7 @@ body {
 .app-container {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 120px);
+  height: calc(100vh - 88px);
   width: 100%;
   padding: 10px;
   box-sizing: border-box;

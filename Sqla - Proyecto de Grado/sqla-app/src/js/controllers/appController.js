@@ -506,41 +506,6 @@ export const AppController = {
           this.resizeBlockly();
         });
 
-        // === Auto-scroll: sub-categorías → scroll en flyout padre ===
-        // Helper: centra el flyout en el primer bloque del tipo dado
-        const scrollFlyoutTo = (blockType) => {
-          const flyout = this.workspace.getFlyout();
-          if (!flyout) return;
-          try {
-            const fw = flyout.getWorkspace();
-            const target = fw?.getAllBlocks(false).find(b => b.type === blockType);
-            if (target) fw.centerOnBlock(target.id);
-          } catch (e) {
-            console.warn('Auto-scroll flyout:', e);
-          }
-        };
-
-        // Mapa sub-categoría → bloque ancla en el flyout padre
-        const subCatScrollMap = [
-          { name: 'Funciones de Agregación', anchor: 'sql_sum' },
-          // Añadir aquí futuras sub-categorías si las hay
-        ];
-
-        const dmlChildren = dmlCat?.getChildToolboxItems?.() || [];
-        for (const { name, anchor } of subCatScrollMap) {
-          const subCat = dmlChildren.find(item => item.getName?.() === name);
-          subCat?.getDiv?.()?.addEventListener('click', (e) => {
-            e.stopPropagation(); // Evita que Blockly cambie el flyout
-
-            // Si el padre no está seleccionado, seleccionarlo primero y luego hacer scroll
-            if (toolbox.getSelectedItem?.() !== dmlCat) {
-              toolbox.selectItem?.(dmlCat);
-              setTimeout(() => scrollFlyoutTo(anchor), 150);
-            } else {
-              scrollFlyoutTo(anchor);
-            }
-          }, true); // capture phase: intercepta antes que Blockly
-        }
       }, 200);
     }
 
