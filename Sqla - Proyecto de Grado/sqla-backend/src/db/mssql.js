@@ -3,10 +3,15 @@ import dotenv from "dotenv";
 import { fileURLToPath } from "url";
 import { dirname, resolve } from "path";
 
-// Resolver la ruta al .env relativo a este archivo (src/.env),
-// independientemente del directorio desde donde se ejecute Node.
 const __dirname = dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: resolve(__dirname, "../.env") });
+
+// En producción (pkg): .env vive junto al .exe.
+// En desarrollo: está en sqla-backend/src/.env
+const envPath = process.pkg
+    ? resolve(dirname(process.execPath), ".env")
+    : resolve(__dirname, "../.env");
+
+dotenv.config({ path: envPath });
 
 const config = {
     user: process.env.DB_USER,

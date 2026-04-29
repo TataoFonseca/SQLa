@@ -1,5 +1,17 @@
 import express from "express";
 import sqlRoutes from "./routes/sql.routes.js";
+import { existsSync } from "fs";
+import { fileURLToPath } from "url";
+import { join, dirname } from "path";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// En producción (empaquetado con pkg), dist/ vive junto al .exe.
+// En desarrollo, está en sqla-app/dist/ (solo existe si se corrió vite build).
+const distPath = process.pkg
+    ? join(dirname(process.execPath), "dist")
+    : join(__dirname, "..", "..", "sqla-app", "dist");
 
 const app = express();
 
@@ -36,6 +48,20 @@ app.use("/api/sql", sqlRoutes);
 app.get('/', (req, res) => {
     res.json({ message: 'Backend SQL Sandbox funcionando' });
 });
+
+// ==========================================
+// SERVIR FRONTEND ESTÁTICO (solo producción)
+// En dev, Vite corre en localhost:5173 por separado.
+// En producción (instalador), dist/ existe y Express sirve todo.
+// ==========================================
+if (existsSync(distPath)) {
+    app.use(express.static(distPath));
+    // Catch-all para SPA: cualquier ruta que no sea /api/* devuelve index.html
+    app.get(/^(?!\/api).*/, (req, res) => {
+        res.sendFile(join(distPath, "index.html"));
+    });
+    console.log(`✅ Sirviendo frontend desde: ${distPath}`);
+}
 
 export default app;
 

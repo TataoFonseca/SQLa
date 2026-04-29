@@ -1,0 +1,12 @@
+{
+  "pkg": {
+    "scripts": [
+      "../Sqla - Proyecto de Grado/sqla-backend/src/**/*.js"
+    ],
+    "assets": [],
+    "targets": [
+      "node18-win-x64"
+    ],
+    "outputPath": "./output"
+  }
+}

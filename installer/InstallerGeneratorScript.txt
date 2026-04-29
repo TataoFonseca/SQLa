@@ -1,0 +1,16 @@
+# Prerequisitos una sola vez:
+npm install -g pkg
+# + tener Inno Setup instalado
+
+# Cada vez que se desee generar el .exe para distribución:
+git merge main
+.\installer\build-installer.ps1
+# → genera installer/output/SQLa-Setup.exe
+
+
+# Ejecutar script desde terminal
+cd "d:\Jonathan\Documentos\GitHub\SQLa\installer"
+.\build-installer.ps1
+
+# Para saltarse el build completo y solo compilar el instalador:
+& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" .\sqla-installer.iss
