@@ -14,7 +14,7 @@ const config = {
     server: process.env.DB_SERVER,
     database: process.env.DB_DATABASE,
     pool: {
-        max: 50, // soporta hasta 50 conexiones simultáneas
+        max: 60, // soporta hasta 60 conexiones simultáneas
         min: 1,
         idleTimeoutMillis: 300000   // 5 min — evita que conexiones idle se cierren entre consultas
     },

@@ -1,7 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "PowerShell(Get-Process | Where-Object { $_.Id -eq 9936 })"
-    ]
-  }
-}
