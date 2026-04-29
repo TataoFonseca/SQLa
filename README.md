@@ -195,8 +195,8 @@ Abre el navegador en `http://localhost:5173`.
 
 | Nombre | Rol |
 |--------|-----|
-| **David Gómez** | Desarrollo y diseño |
-| **David Fonseca** | Desarrollo y diseño |
+| **Jonathan David Fonseca Rubio** | Desarrollo y diseño |
+| **Jose David Gomez Galvis** | Desarrollo y diseño |
 
 Proyecto de Grado — 2026.
 
