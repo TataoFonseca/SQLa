@@ -91,6 +91,9 @@
         <div id="sqlOutput" class="sql-output" style="display:none;"></div>
       </div>
 
+      <!-- Handle de resize entre columna izquierda y panel ERD -->
+      <div id="panelResizeHandle" style="display:none;"></div>
+
       <!-- Mermaid / ERD -->
       <div id="mermaidDiv" class="mermaid-container" style="display:none; position:relative;">
         <h2>Diagrama ERD</h2>
@@ -201,9 +204,7 @@
         <!-- MAX con Expression que usa extensión de agregación -->
         <block type="sql_max">
         </block>
-
       </category>
-      <!-- SUBCATEGORÍA: CONDICIONES (WHERE / HAVING) -->
 
       <!-- HAVING pre-cargado con ExpressionSingle -->
       <block type="sql_having">
@@ -354,7 +355,81 @@
     document.addEventListener('DOMContentLoaded', async () => {
       await loadPartials({ header: true, footer: true });
       AppController.init();
+      window._sqlaController = AppController;
     });
+  </script>
+
+  <!-- RESIZE HANDLE: panel ERD redimensionable -->
+  <script>
+    (function () {
+      const handle = document.getElementById('panelResizeHandle');
+      const leftCol = document.querySelector('.left-column');
+      const erdPanel = document.getElementById('mermaidDiv');
+
+      let isDragging = false;
+      let startX, startLeftW, startRightW;
+      let savedLeftW = null, savedRightW = null;
+
+      // Sincronizar visibilidad del handle con el panel ERD
+      new MutationObserver(() => {
+        const visible = erdPanel.style.display !== 'none';
+        handle.style.display = visible ? 'block' : 'none';
+
+        if (!visible) {
+          // Panel oculto → quitar widths fijos para que left-column llene el espacio
+          savedLeftW = leftCol.style.width || null;
+          savedRightW = erdPanel.style.width || null;
+          leftCol.style.flex = '';
+          leftCol.style.width = '';
+        } else if (savedLeftW) {
+          // Panel visible de nuevo → restaurar últimos anchos del usuario
+          leftCol.style.flex = 'none';
+          leftCol.style.width = savedLeftW;
+          erdPanel.style.flex = 'none';
+          erdPanel.style.width = savedRightW;
+          setTimeout(() => window._sqlaController?.resizeERD(), 50);
+        }
+      }).observe(erdPanel, { attributes: true, attributeFilter: ['style'] });
+
+      // --- Drag ---
+      handle.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        startX = e.clientX;
+        startLeftW = leftCol.getBoundingClientRect().width;
+        startRightW = erdPanel.getBoundingClientRect().width;
+        handle.classList.add('dragging');
+        document.body.style.userSelect = 'none';
+        document.body.style.cursor = 'col-resize';
+        e.preventDefault();
+      });
+
+      document.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        const dx = e.clientX - startX;
+        const total = startLeftW + startRightW;
+        const minW = 220;
+        const newLeft = Math.max(minW, Math.min(total - minW, startLeftW + dx));
+        const newRight = total - newLeft;
+
+        leftCol.style.flex = 'none';
+        leftCol.style.width = newLeft + 'px';
+        erdPanel.style.flex = 'none';
+        erdPanel.style.width = newRight + 'px';
+
+        savedLeftW = newLeft + 'px';
+        savedRightW = newRight + 'px';
+
+        window._sqlaController?.resizeERD();
+      });
+
+      document.addEventListener('mouseup', () => {
+        if (!isDragging) return;
+        isDragging = false;
+        handle.classList.remove('dragging');
+        document.body.style.userSelect = '';
+        document.body.style.cursor = '';
+      });
+    })();
   </script>
 </body>
 
