@@ -13,7 +13,7 @@ services:
     volumes:
       - sql-data:/var/opt/mssql/data
       - ./db-scripts:/scripts
-    entrypoint: /bin/bash /scripts/entrypoint.sh
+    entrypoint: ["/bin/bash", "-c", "sed -i 's/\\r//' /scripts/entrypoint.sh /scripts/init-db.sh && exec /bin/bash /scripts/entrypoint.sh"]
 
   backend:
     build:
@@ -39,8 +39,8 @@ services:
       dockerfile: Docker/frontend.Dockerfile
     container_name: sqla-frontend
     ports:
-      # - "80:80"
-      - "8080:80" # Descomentar si el puerto 80 está en uso por otro servicio
+      - "80:80"
+      # - "8080:80" # Descomentar si el puerto 80 está en uso por otro servicio
     depends_on:
       - backend
 
