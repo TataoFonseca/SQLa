@@ -1,7 +1,8 @@
 {
   "pkg": {
     "scripts": [
-      "../Sqla - Proyecto de Grado/sqla-backend/src/**/*.js"
+      "../Sqla - Proyecto de Grado/sqla-backend/src/**/*.js",
+      "../Sqla - Proyecto de Grado/sqla-backend/src/**/*.cjs"
     ],
     "assets": [],
     "targets": [

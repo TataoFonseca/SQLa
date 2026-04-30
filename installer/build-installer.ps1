@@ -64,8 +64,16 @@ if (-not $iscc) {
     Fail "Inno Setup no encontrado.`nDescargalo desde https://jrsoftware.org/isdl.php e instalalo."
 }
 
+# Verificar esbuild
+if (-not (Get-Command esbuild -ErrorAction SilentlyContinue)) {
+    Write-Host "  esbuild no encontrado. Instalando globalmente..." -ForegroundColor Yellow
+    npm install -g esbuild
+    if ($LASTEXITCODE -ne 0) { Fail "No se pudo instalar esbuild." }
+}
+
 Write-Host "  Node.js : OK" -ForegroundColor Green
 Write-Host "  pkg     : OK (@yao-pkg/pkg)" -ForegroundColor Green
+Write-Host "  esbuild : OK" -ForegroundColor Green
 Write-Host "  ISCC    : $iscc" -ForegroundColor Green
 
 # ── 1. Instalar dependencias del frontend ───────────────────
@@ -86,20 +94,31 @@ Set-Location $backDir
 npm install
 if ($LASTEXITCODE -ne 0) { Fail "npm install falló en sqla-backend." }
 
-# ── 4. Empaquetar backend con @yao-pkg/pkg ──────────────────
+# ── 4. Bundlear + empaquetar backend ────────────────────────
+if (-not (Test-Path $outDir)) { New-Item -ItemType Directory -Path $outDir | Out-Null }
+$bundlePath = Join-Path $outDir "bundle.cjs"
+
+Write-Step "Bundleando backend con esbuild (ESM -> CJS)..."
+Set-Location $backDir
+esbuild src/server.js `
+    --bundle `
+    --platform=node `
+    --target=node18 `
+    --format=cjs `
+    --outfile="$bundlePath"
+if ($LASTEXITCODE -ne 0) { Fail "esbuild falló al bundlear el backend." }
+Write-Host "  bundle.cjs generado" -ForegroundColor Green
+
 Write-Step "Empaquetando backend como ejecutable (.exe)..."
 Set-Location $PSScriptRoot
-
-if (-not (Test-Path $outDir)) { New-Item -ItemType Directory -Path $outDir | Out-Null }
-
-# @yao-pkg/pkg se instala como "pkg" en el PATH
-pkg "$backDir\src\server.js" `
-    --config "$PSScriptRoot\pkg.config.json" `
+pkg "$bundlePath" `
     --target node18-win-x64 `
     --output "$outDir\sqla-server.exe" `
     --compress GZip
 if ($LASTEXITCODE -ne 0) { Fail "pkg falló al empaquetar el backend." }
 Write-Host "  sqla-server.exe generado en $outDir" -ForegroundColor Green
+
+Remove-Item $bundlePath -ErrorAction SilentlyContinue
 
 # ── 5. Copiar archivos al output ────────────────────────────
 Write-Step "Copiando archivos al directorio de salida..."

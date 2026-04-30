@@ -1,17 +1,13 @@
 import sql from "mssql";
 import dotenv from "dotenv";
-import { fileURLToPath } from "url";
-import { dirname, resolve } from "path";
+import { resolve, dirname } from "path";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-
-// En producción (pkg): .env vive junto al .exe.
-// En desarrollo: está en sqla-backend/src/.env
-const envPath = process.pkg
-    ? resolve(dirname(process.execPath), ".env")
-    : resolve(__dirname, "../.env");
-
-dotenv.config({ path: envPath });
+// En pkg: .env vive junto al .exe. En dev: dotenv busca en process.cwd().
+if (process.pkg) {
+    dotenv.config({ path: resolve(dirname(process.execPath), ".env") });
+} else {
+    dotenv.config();
+}
 
 const config = {
     user: process.env.DB_USER,

@@ -1,6 +1,7 @@
 
 import app from "./app.js";
 import { getPool } from "./db/mssql.js";
+import { initLauncher } from "./launcher.cjs";
 
 const PORT = process.env.PORT || 3000;
 
@@ -17,4 +18,6 @@ app.listen(3000, '0.0.0.0', async () => {
     console.warn("⚠️  No se pudo pre-calentar el pool:", err.message);
     // No es fatal — el pool se intentará conectar al primer request
   }
+
+  if (process.pkg) initLauncher(PORT);
 });

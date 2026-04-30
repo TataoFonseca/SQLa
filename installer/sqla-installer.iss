@@ -6,8 +6,8 @@
 
 #define AppName      "SQLa"
 #define AppVersion   "1.0.0"
-#define AppPublisher "JonathanDavid Fonseca & José David Gómez"
-#define AppURL       "https://github.com/TuUsuario/SQLa"
+#define AppPublisher "Jonathan David Fonseca & José David Gómez"
+#define AppURL       "https://github.com/TataoFonseca/SQLa"
 #define ExeName      "sqla-server.exe"
 
 [Setup]
@@ -34,6 +34,9 @@ Name: "spanish"; MessagesFile: "compiler:Languages\Spanish.isl"
 ; Ejecutable del backend (empaquetado con pkg, incluye Node.js runtime)
 Source: "output\sqla-server.exe"; DestDir: "{app}"; Flags: ignoreversion
 
+; Wrapper VBS — lanza el exe sin ventana de consola visible
+Source: "sqla-launcher.vbs"; DestDir: "{app}"; Flags: ignoreversion
+
 ; Frontend build — express.static lo sirve desde {app}\dist\ en producción
 Source: "output\dist\*"; DestDir: "{app}\dist"; Flags: ignoreversion recursesubdirs createallsubdirs
 
@@ -42,15 +45,17 @@ Source: "output\db-scripts\01_sqla_setup.sql";       DestDir: "{app}\db-scripts"
 Source: "output\db-scripts\02_Chinook_SqlServer.sql"; DestDir: "{app}\db-scripts"; Flags: ignoreversion
 
 [Icons]
-Name: "{group}\{#AppName}";              Filename: "{app}\{#ExeName}"
+; Los accesos directos apuntan al VBS para que no aparezca la ventana de consola.
+; IconFilename apunta al exe para mostrar el ícono correcto en el acceso directo.
+Name: "{group}\{#AppName}";              Filename: "wscript.exe"; Parameters: """{app}\sqla-launcher.vbs"""; WorkingDir: "{app}"; IconFilename: "{app}\{#ExeName}"
 Name: "{group}\Desinstalar {#AppName}";  Filename: "{uninstallexe}"
-Name: "{commondesktop}\{#AppName}";      Filename: "{app}\{#ExeName}"; Tasks: desktopicon
+Name: "{commondesktop}\{#AppName}";      Filename: "wscript.exe"; Parameters: """{app}\sqla-launcher.vbs"""; WorkingDir: "{app}"; IconFilename: "{app}\{#ExeName}"; Tasks: desktopicon
 
 [Tasks]
 Name: "desktopicon"; Description: "Crear acceso directo en el escritorio"; GroupDescription: "Opciones adicionales:"
 
 [Run]
-Filename: "{app}\{#ExeName}"; Description: "Iniciar {#AppName}"; Flags: postinstall nowait skipifsilent
+Filename: "wscript.exe"; Parameters: """{app}\sqla-launcher.vbs"""; WorkingDir: "{app}"; Description: "Iniciar {#AppName}"; Flags: postinstall nowait skipifsilent
 
 ; ============================================================
 ; CÓDIGO PASCAL — Lógica personalizada del wizard
@@ -82,15 +87,22 @@ end;
 function SqlServerInRegistry(): Boolean;
 var
   Keys: TArrayOfString;
+  RegKey: String;
 begin
   Result := False;
-  if RegGetSubkeyNames(HKLM, 'SOFTWARE\Microsoft\Microsoft SQL Server\Instance Names\SQL', Keys) then
-    if GetArrayLength(Keys) > 0 then
-      Result := True;
-  if not Result then
-    if RegGetSubkeyNames(HKLM, 'SOFTWARE\WOW6432Node\Microsoft\Microsoft SQL Server\Instance Names\SQL', Keys) then
-      if GetArrayLength(Keys) > 0 then
-        Result := True;
+  RegKey := 'SOFTWARE\Microsoft\Microsoft SQL Server\Instance Names\SQL';
+
+  // Registro de 64 bits — SQL Server 2016 / 2019 / 2022 (version 130, 150, 160)
+  if RegGetSubkeyNames(HKLM or $100, RegKey, Keys) then
+    if GetArrayLength(Keys) > 0 then begin Result := True; Exit; end;
+
+  // Registro de 32 bits — SQL Server 2014 y anteriores
+  if RegGetSubkeyNames(HKLM, RegKey, Keys) then
+    if GetArrayLength(Keys) > 0 then begin Result := True; Exit; end;
+
+  // Fallback: verificar carpeta de instalacion en disco (cubre cualquier version)
+  Result := DirExists(ExpandConstant('{commonpf64}\Microsoft SQL Server')) or
+            DirExists(ExpandConstant('{commonpf32}\Microsoft SQL Server'));
 end;
 
 // ── Crear páginas personalizadas ────────────────────────────
