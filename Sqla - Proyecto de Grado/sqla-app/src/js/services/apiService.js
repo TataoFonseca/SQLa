@@ -1,8 +1,12 @@
 // sqla-app/src/js/services/apiService.js
 
+<<<<<<< Updated upstream
 // const API_BASE_URL = 'http://localhost:3000/api/sql'; // Ajustar el puerto si es diferente, con esta opción el JS se ejecutá en la maquina donde se abre el navegador, por lo que aunque las sesiones se creaban, el backend de docker no erá alcanzado, por lo que no se podian encontrar las otras sesiones porque la maquina buscaba en su backend local por no poder llegar al del servidor.
 
 const API_BASE_URL = `http://${window.location.hostname}:3000/api/sql`; // Dinámico para aceptar conexiones de red local
+=======
+const API_BASE_URL = `${window.location.protocol}//${window.location.hostname}:3000/api/sql`;
+>>>>>>> Stashed changes
 
 class ApiService {
     constructor() {
